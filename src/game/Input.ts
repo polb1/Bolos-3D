@@ -1,4 +1,6 @@
 export interface InputHandlers {
+  /** False while another place (the hall) owns the screen. */
+  active(): boolean;
   grab(clientX: number, clientY: number, time: number): boolean;
   /** `time` is the event's own timestamp (ms), so stroke speed is exact even if frames stall. */
   move(clientX: number, clientY: number, time: number): void;
@@ -41,7 +43,7 @@ export class Input {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if ((e.target as HTMLElement)?.tagName === 'INPUT' || e.repeat) return;
+    if ((e.target as HTMLElement)?.tagName === 'INPUT' || e.repeat || !this.h.active()) return;
     this.keys.add(e.code);
     if (e.code === 'KeyC') this.h.camera();
     if (e.code === 'KeyM') this.h.mute();

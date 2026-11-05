@@ -9,6 +9,7 @@ import { Monitor } from '../scene/Monitor';
 import { createBallMesh } from '../scene/pinMesh';
 import { currentScore, turnState } from '../scoring/scoring';
 import { useGameStore } from '../store/useGameStore';
+import { useWorldStore } from '../world/worldStore';
 import { clamp, damp } from '../utils/math';
 import { createRng, gaussian } from '../utils/random';
 import { Input } from './Input';
@@ -111,6 +112,7 @@ export class Game {
     audio.setMuted(useGameStore.getState().muted);
 
     this.input = new Input(this.renderer.domElement, {
+      active: () => useWorldStore.getState().place === 'bowling',
       grab: (x, y, t) => this.grab(x, y, t),
       move: (x, y, t) => this.drag(x, y, t),
       release: () => this.release(),
@@ -399,6 +401,7 @@ export class Game {
   private loop = () => {
     this.raf = requestAnimationFrame(this.loop);
     const dt = Math.min(this.clock.getDelta(), 0.1);
+    if (useWorldStore.getState().place !== 'bowling') return; // the hall owns the screen
     if (!this.paused) this.update(dt);
     this.render(dt);
   };

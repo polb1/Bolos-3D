@@ -8,7 +8,14 @@ Reconstrucción inspirada en https://padel-mto1.onrender.com/ (simulador de pád
 ## Stack
 Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo dentro de la clase `Game` + Rapier (`@dimforge/rapier3d-compat`) + Web Audio sintetizado (sin archivos de audio) + Vitest.
 
-## Arquitectura (`src/`)
+## Virtual Arcade (local 3D)
+El juego arranca en un centro recreativo por el que se camina en tercera persona; la bolera es una de sus actividades. Decisiones y plan por etapas en `ARCHITECTURE.md`.
+- `world/`: `World` (render, bucle, cámara orbital con colisión, entrada/salida de actividades), `Hall` (local y zonas), `props` (máquinas y muebles procedurales), `Avatar` (personaje animado), `collide` (círculo contra cajas), `activities` (registro), `worldStore`.
+- Solo renderiza la capa activa (`useWorldStore.place`): `#world-stage` o `#stage` (bolos). Al volver, el personaje sigue donde estaba.
+- Billar, air hockey, futbolín, dardos y recreativas están colocados y muestran «Próximamente»: cada uno irá en `src/games/<id>/`.
+- En desarrollo, `window.__world` y `window.__game` permiten probar desde la consola (el panel del navegador oculto pausa `requestAnimationFrame`).
+
+## Arquitectura de la bolera (`src/`)
 - `config/`: `constants.ts` (medidas reglamentarias y parámetros físicos), `settings.ts`.
 - `physics/PhysicsWorld.ts`: mundo de Rapier.
   - Pista con zona aceitada (μ 0,02, primeros 12,2 m) y zona seca (μ 0,26): de ahí sale el gancho, sin programarlo.
@@ -37,7 +44,7 @@ Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo 
 - **Fuera de alcance:** modo online, tienda y torneos de la referencia.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (33 tests) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (40 tests) · `npm run build`
 
 ## Pruebas en navegador
 El navegador integrado de la app no tenía WebGL; se probó con Chrome headless + SwiftShader (`--use-angle=swiftshader --enable-unsafe-swiftshader`) y puppeteer-core. En headless los eventos del ratón llegan espaciados y la velocidad del gesto sale falsa. Para medirla bien, envía los eventos por CDP con `Input.dispatchMouseEvent` y un `timestamp` explícito.

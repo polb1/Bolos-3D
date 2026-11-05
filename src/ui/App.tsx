@@ -9,20 +9,29 @@ import { LoadingScreen } from './LoadingScreen';
 import { MainMenu } from './MainMenu';
 import { PausePanel } from './PausePanel';
 import { SetupPanel } from './SetupPanel';
+import { Fade, WorldUI } from './world/WorldUI';
+import { worldRef } from '../world/instance';
+import { useWorldStore } from '../world/worldStore';
 
 export function App() {
   const stageRef = useRef<HTMLDivElement>(null);
+  const worldStageRef = useRef<HTMLDivElement>(null);
   const screen = useGameStore((s) => s.screen);
+  const place = useWorldStore((s) => s.place);
+  const worldScreen = useWorldStore((s) => s.screen);
 
   useEffect(() => {
     let cancelled = false;
     const st = useGameStore.getState();
     (async () => {
       try {
-        const [{ Game }] = await Promise.all([import('../game/Game'), initRapier()]);
-        if (cancelled || !stageRef.current || gameRef.current) return;
+        const [{ Game }, { World }] = await Promise.all([import('../game/Game'), import('../world/World'), initRapier()]);
+        if (cancelled || !stageRef.current || !worldStageRef.current || gameRef.current) return;
         gameRef.current = new Game(stageRef.current);
+        worldRef.current = new World(worldStageRef.current);
+        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current }); // for browser testing
         st.setScreen('menu');
+        useWorldStore.getState().setScreen('title');
       } catch (e) {
         console.error(e);
         st.setLoadError(
@@ -46,13 +55,20 @@ export function App() {
 
   return (
     <>
-      <div id="stage" ref={stageRef} />
-      {(screen === 'playing' || screen === 'paused') && <Hud />}
-      {screen === 'loading' && <LoadingScreen />}
-      {screen === 'menu' && <MainMenu />}
-      {screen === 'setup' && <SetupPanel />}
-      {screen === 'paused' && <PausePanel />}
-      {screen === 'end' && <EndPanel />}
+      <div id="stage" ref={stageRef} className={place === 'bowling' ? '' : 'hidden'} />
+      <div id="world-stage" ref={worldStageRef} className={place === 'world' ? '' : 'hidden'} />
+      {(screen === 'loading' || worldScreen === 'loading') && <LoadingScreen />}
+      {place === 'world' && worldScreen !== 'loading' && <WorldUI />}
+      {place === 'bowling' && (
+        <>
+          {(screen === 'playing' || screen === 'paused') && <Hud />}
+          {screen === 'menu' && <MainMenu />}
+          {screen === 'setup' && <SetupPanel />}
+          {screen === 'paused' && <PausePanel />}
+          {screen === 'end' && <EndPanel />}
+        </>
+      )}
+      <Fade />
     </>
   );
 }

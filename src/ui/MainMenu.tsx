@@ -1,6 +1,7 @@
 import { audio } from '../audio/AudioEngine';
 import { BALL_COLORS } from '../config/settings';
 import { gameRef } from '../game/instance';
+import { worldRef } from '../world/instance';
 import { useGameStore } from '../store/useGameStore';
 import { MuteButton } from './MuteButton';
 
@@ -48,6 +49,9 @@ export function MainMenu() {
           </button>
           <button className="btn menu" onClick={() => (audio.ui(), setScreen('setup'))}>
             ⚙ Personalizar partida
+          </button>
+          <button className="btn ghost" onClick={() => (audio.ui(), worldRef.current?.leave())}>
+            ← Volver al local
           </button>
         </div>
         <div className="menu-summary">
