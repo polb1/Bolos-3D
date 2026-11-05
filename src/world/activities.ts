@@ -1,12 +1,12 @@
 import type { Place } from './worldStore';
 
-/** Something the player can walk up to and use. */
+/** Something the player can walk up to and use. Coordinates are map tiles. */
 export interface Activity {
   id: string;
   name: string;
-  /** Where the player must stand (floor x, z). */
+  /** Where the player must stand (tile x, y). */
   x: number;
-  z: number;
+  y: number;
   radius: number;
   /** Layer to switch to; null while the minigame is still being built. */
   place: Place | null;
@@ -15,23 +15,23 @@ export interface Activity {
 
 /** The hall's interactive spots. Adding a game = one entry here + its module. */
 export const ACTIVITIES: Activity[] = [
-  { id: 'bowling', name: 'Bolera', x: -10, z: -4.6, radius: 2.2, place: 'bowling', color: '#d8f24a' },
-  { id: 'pool-1', name: 'Billar', x: 7.5, z: -8.9, radius: 1.9, place: null, color: '#4fb6ff' },
-  { id: 'pool-2', name: 'Billar', x: 12.5, z: -8.9, radius: 1.9, place: null, color: '#4fb6ff' },
-  { id: 'airhockey-1', name: 'Air Hockey', x: 12.3, z: 0, radius: 1.8, place: null, color: '#ff4f6e' },
-  { id: 'airhockey-2', name: 'Air Hockey', x: 12.3, z: 4.4, radius: 1.8, place: null, color: '#ff4f6e' },
-  { id: 'foosball-1', name: 'Futbolín', x: -1.6, z: 1.2, radius: 1.6, place: null, color: '#7dffb0' },
-  { id: 'foosball-2', name: 'Futbolín', x: 2.6, z: 1.2, radius: 1.6, place: null, color: '#7dffb0' },
-  { id: 'darts', name: 'Dardos', x: -13.2, z: 2.5, radius: 2.4, place: null, color: '#ffb84f' },
-  { id: 'arcade', name: 'Recreativas', x: 13.4, z: 10.1, radius: 2.4, place: null, color: '#b06bff' },
+  { id: 'bowling', name: 'Bolera', x: 9, y: 9, radius: 2.4, place: 'bowling', color: '#d8f24a' },
+  { id: 'pool-1', name: 'Billar', x: 26, y: 7.3, radius: 1.8, place: null, color: '#4fb6ff' },
+  { id: 'pool-2', name: 'Billar', x: 36, y: 7.3, radius: 1.8, place: null, color: '#4fb6ff' },
+  { id: 'darts', name: 'Dardos', x: 5.5, y: 16.5, radius: 2.4, place: null, color: '#ffb84f' },
+  { id: 'airhockey-1', name: 'Air Hockey', x: 35, y: 15.8, radius: 1.3, place: null, color: '#ff4f6e' },
+  { id: 'airhockey-2', name: 'Air Hockey', x: 35, y: 20, radius: 1.3, place: null, color: '#ff4f6e' },
+  { id: 'foosball-1', name: 'Futbolín', x: 40, y: 15.8, radius: 1.3, place: null, color: '#7dffb0' },
+  { id: 'foosball-2', name: 'Futbolín', x: 40, y: 20, radius: 1.3, place: null, color: '#7dffb0' },
+  { id: 'arcade', name: 'Recreativas', x: 37.5, y: 24.6, radius: 2.4, place: null, color: '#b06bff' },
 ];
 
 /** Closest activity whose radius contains the point, or null. */
-export function nearestActivity(x: number, z: number): Activity | null {
+export function nearestActivity(x: number, y: number): Activity | null {
   let best: Activity | null = null;
   let bestD = Infinity;
   for (const a of ACTIVITIES) {
-    const d = Math.hypot(a.x - x, a.z - z);
+    const d = Math.hypot(a.x - x, a.y - y);
     if (d <= a.radius && d < bestD) {
       best = a;
       bestD = d;

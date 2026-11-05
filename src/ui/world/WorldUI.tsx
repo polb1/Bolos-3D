@@ -48,7 +48,7 @@ function Title() {
             Estadísticas
           </button>
         </div>
-        <p className="credits-line">Centro recreativo 3D · física Rapier · todo procedural</p>
+        <p className="credits-line">Local en pixel art · juegos en 3D con física Rapier</p>
       </div>
     </div>
   );
@@ -78,10 +78,10 @@ function Character() {
 function ControlsList() {
   return (
     <div className="controls-table">
-      <p><b>W A S D</b> moverse · <b>Shift</b> correr</p>
-      <p><b>Ratón</b> mirar (clic para capturarlo) · <b>rueda</b> zoom</p>
+      <p><b>W A S D</b> o flechas moverse · <b>Shift</b> correr</p>
       <p><b>E</b> interactuar · <b>ESC</b> menú</p>
-      <p className="mobile-only">Móvil: joystick para moverte, arrastra para girar la cámara, botón ▶ para jugar</p>
+      <p>Dentro de cada juego, los controles son los suyos (3D)</p>
+      <p className="mobile-only">Móvil: joystick para moverte y toca el aviso ▶ para jugar</p>
     </div>
   );
 }
@@ -217,7 +217,7 @@ function Hud() {
       )}
       {toast && <div className="world-toast">{toast}</div>}
       <div className="world-help desktop-help">
-        <b>WASD</b> moverse · <b>Shift</b> correr · <b>ratón</b> cámara · <b>E</b> interactuar · <b>ESC</b> menú
+        <b>WASD</b> moverse · <b>Shift</b> correr · <b>E</b> interactuar · <b>ESC</b> menú
       </div>
       <TouchPad />
     </>

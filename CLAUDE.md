@@ -8,12 +8,12 @@ Reconstrucción inspirada en https://padel-mto1.onrender.com/ (simulador de pád
 ## Stack
 Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo dentro de la clase `Game` + Rapier (`@dimforge/rapier3d-compat`) + Web Audio sintetizado (sin archivos de audio) + Vitest.
 
-## Virtual Arcade (local 3D)
-El juego arranca en un centro recreativo por el que se camina en tercera persona; la bolera es una de sus actividades. Decisiones y plan por etapas en `ARCHITECTURE.md`.
-- `world/`: `World` (render, bucle, cámara orbital con colisión, entrada/salida de actividades), `Hall` (local y zonas), `props` (máquinas y muebles procedurales), `Avatar` (personaje animado), `collide` (círculo contra cajas), `activities` (registro), `worldStore`.
-- Solo renderiza la capa activa (`useWorldStore.place`): `#world-stage` o `#stage` (bolos). Al volver, el personaje sigue donde estaba.
-- Billar, air hockey, futbolín, dardos y recreativas están colocados y muestran «Próximamente»: cada uno irá en `src/games/<id>/`.
-- En desarrollo, `window.__world` y `window.__game` permiten probar desde la consola (el panel del navegador oculto pausa `requestAnimationFrame`).
+## Virtual Arcade (local en pixel art)
+El juego arranca en un centro recreativo 2D visto desde arriba, en pixel art y por salas (decisión del usuario); los juegos son 3D. Decisiones y etapas en `ARCHITECTURE.md`.
+- `world/`: `World` (canvas 2D con zoom entero, bucle, movimiento, cámara, salas atenuadas, entrada/salida de actividades), `map` (salas, puertas, muebles), `sprites` (todo dibujado por código píxel a píxel), `collide` (círculo contra cajas), `activities` (registro en casillas), `worldStore`.
+- Solo se dibuja la capa activa (`useWorldStore.place`): `#world-stage` o `#stage` (bolos 3D). Al volver, el personaje sigue donde estaba.
+- Billar, air hockey, futbolín, dardos y recreativas están colocados y muestran «Próximamente»: cada uno irá en `src/games/<id>/` en 3D.
+- En desarrollo, `window.__world` y `window.__game` permiten probar desde la consola; `__world.frame(dt)` avanza un paso aunque el panel del navegador esté oculto.
 
 ## Arquitectura de la bolera (`src/`)
 - `config/`: `constants.ts` (medidas reglamentarias y parámetros físicos), `settings.ts`.

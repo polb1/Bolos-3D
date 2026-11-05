@@ -1,91 +1,56 @@
-import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { audio } from '../audio/AudioEngine';
-import { QUALITY } from '../config/settings';
 import { useGameStore } from '../store/useGameStore';
-import { damp } from '../utils/math';
 import { ACTIVITIES, nearestActivity, type Activity } from './activities';
-import { Avatar } from './Avatar';
-import { resolve } from './collide';
-import { Hall, SPAWN } from './Hall';
+import { resolve, type Box } from './collide';
+import { drawStatic, MAP_H, MAP_W, PROPS, ROOMS, roomAt, solids, SPAWN } from './map';
+import { character, px, TILE } from './sprites';
 import { OUTFITS, useWorldStore } from './worldStore';
 
-const WALK = 2.1;
-const RUN = 4.8;
-const RADIUS = 0.32;
-const EYE = 1.45; // camera pivot height above the floor
-const MIN_DIST = 1.6;
-const MAX_DIST = 7;
+const WALK = 4.2; // tiles / s
+const RUN = 7.5;
+const RADIUS = 0.3; // feet circle, tiles
 const FADE_MS = 380;
+const VIEW_TILES = 18; // roughly how many tiles fit vertically
 
 /**
- * The arcade hall: renderer, loop, third-person character and camera, and the
- * hand-off to activities. Only runs while the hall is the live place.
+ * The arcade hall as a top-down pixel-art map of rooms. The minigames stay 3D:
+ * walking up to one and pressing E hands the screen over to it.
  */
 export class World {
-  private readonly renderer: THREE.WebGLRenderer;
-  private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(60, 1, 0.05, 80);
-  private readonly hall = new Hall();
-  private readonly avatar: Avatar;
-  private readonly clock = new THREE.Clock();
-  private readonly raycaster = new THREE.Raycaster();
-  private readonly markers = new Map<string, THREE.Group>();
-  private readonly pos = { x: SPAWN.x, z: SPAWN.z };
-  private readonly vel = new THREE.Vector2();
-  private facing = SPAWN.yaw;
-  private camYaw = SPAWN.yaw + Math.PI;
-  private camPitch = 0.32;
-  private dist = 4.2;
-  private camDist = 4.2;
+  private readonly canvas = document.createElement('canvas');
+  private readonly g = this.canvas.getContext('2d')!;
+  private readonly staticLayer = document.createElement('canvas');
+  private readonly sprite = document.createElement('canvas');
+  private readonly boxes: Box[];
+  private readonly pos = { x: SPAWN.x, z: SPAWN.y };
+  private vx = 0;
+  private vy = 0;
+  private dir = 3; // 0 down, 1 left, 2 right, 3 up
+  private anim = 0;
+  private interactT = 0;
   private time = 0;
+  private last = performance.now();
   private busy = false;
-  /** Jump the camera behind the player on the next frame (no sweep through walls). */
-  private snapCam = true;
   private raf = 0;
+  private scale = 3;
+  private room = '';
   private readonly keys = new Set<string>();
   /** Virtual joystick from the touch UI, x/y in [-1, 1] (y up = forward). */
   readonly stick = { x: 0, y: 0, run: false };
-  private drag: { id: number; x: number; y: number } | null = null;
-  private readonly unsub: () => void;
 
   constructor(private readonly host: HTMLElement) {
-    const quality = QUALITY[useGameStore.getState().settings.quality];
-    this.renderer = new THREE.WebGLRenderer({ antialias: quality.antialias, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatio));
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
-    host.appendChild(this.renderer.domElement);
+    this.canvas.style.imageRendering = 'pixelated';
+    host.appendChild(this.canvas);
+    this.staticLayer.width = MAP_W * TILE;
+    this.staticLayer.height = MAP_H * TILE;
+    drawStatic(this.staticLayer.getContext('2d')!);
+    this.sprite.width = 16;
+    this.sprite.height = 24;
+    this.boxes = solids().map(([x, y, w, h]) => ({ minX: x, maxX: x + w, minZ: y, maxZ: y + h }));
 
-    this.scene.background = new THREE.Color(0x05070f);
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.35;
-    pmrem.dispose();
-
-    this.avatar = new Avatar(OUTFITS[useWorldStore.getState().outfit]?.outfit ?? OUTFITS[0].outfit);
-    this.scene.add(this.hall.group, this.avatar.root);
-    this.buildMarkers();
-
-    const unsubQuality = useGameStore.subscribe((st, prev) => {
-      if (st.settings.quality !== prev.settings.quality) this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY[st.settings.quality].pixelRatio));
-    });
-    const unsubWorld = useWorldStore.subscribe((st, prev) => {
-      if (st.outfit !== prev.outfit) this.avatar.setOutfit(OUTFITS[st.outfit].outfit);
-      if (st.screen !== prev.screen && st.screen !== 'explore') this.keys.clear();
-    });
-    this.unsub = () => (unsubQuality(), unsubWorld());
-
-    const c = this.renderer.domElement;
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
-    c.addEventListener('pointerdown', this.onPointerDown);
-    window.addEventListener('pointermove', this.onPointerMove);
-    window.addEventListener('pointerup', this.onPointerUp);
-    c.addEventListener('wheel', this.onWheel, { passive: false });
-    document.addEventListener('pointerlockchange', this.onLockChange);
     window.addEventListener('resize', this.resize);
     this.resize();
     this.loop();
@@ -93,8 +58,7 @@ export class World {
 
   // ------------------------------------------------------------------ public API (UI)
   get live() {
-    const w = useWorldStore.getState();
-    return w.place === 'world';
+    return useWorldStore.getState().place === 'world';
   }
 
   private get exploring() {
@@ -105,12 +69,10 @@ export class World {
   enter() {
     audio.unlock();
     audio.setAmbience(useGameStore.getState().settings.crowd);
-    this.snapCam = true;
     useWorldStore.getState().setScreen('explore');
   }
 
   pause() {
-    document.exitPointerLock?.();
     this.keys.clear();
     useWorldStore.getState().setScreen('paused');
   }
@@ -120,7 +82,6 @@ export class World {
   }
 
   toTitle() {
-    document.exitPointerLock?.();
     useWorldStore.getState().setScreen('title');
   }
 
@@ -140,10 +101,8 @@ export class World {
   private start(a: Activity) {
     const w = useWorldStore.getState();
     this.busy = true;
-    this.facing = Math.atan2(a.x - this.pos.x, a.z - this.pos.z) || this.facing;
-    this.avatar.interact();
+    this.interactT = 0.35;
     audio.ui();
-    document.exitPointerLock?.();
     w.setFade(true);
     window.setTimeout(() => {
       w.setPlace(a.place!);
@@ -161,61 +120,18 @@ export class World {
       w.setPlace('world');
       w.setScreen('explore');
       audio.setAmbience(useGameStore.getState().settings.crowd);
-      this.clock.getDelta();
+      this.last = performance.now();
       w.setFade(false);
     }, FADE_MS);
   }
 
   dispose() {
     cancelAnimationFrame(this.raf);
-    this.unsub();
-    const c = this.renderer.domElement;
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
-    c.removeEventListener('pointerdown', this.onPointerDown);
-    window.removeEventListener('pointermove', this.onPointerMove);
-    window.removeEventListener('pointerup', this.onPointerUp);
-    c.removeEventListener('wheel', this.onWheel);
-    document.removeEventListener('pointerlockchange', this.onLockChange);
     window.removeEventListener('resize', this.resize);
-    this.renderer.dispose();
-    c.remove();
-  }
-
-  // ------------------------------------------------------------------ markers
-  private buildMarkers() {
-    for (const a of ACTIVITIES) {
-      const g = new THREE.Group();
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.42, 0.5, 48),
-        new THREE.MeshBasicMaterial({ color: a.color, transparent: true, opacity: 0.35, toneMapped: false, depthWrite: false }),
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.025;
-      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.24, 4), new THREE.MeshBasicMaterial({ color: a.color, toneMapped: false }));
-      arrow.rotation.x = Math.PI;
-      arrow.position.y = 2.25;
-      arrow.visible = false;
-      g.add(ring, arrow);
-      g.position.set(a.x, 0, a.z);
-      this.scene.add(g);
-      this.markers.set(a.id, g);
-    }
-  }
-
-  private updateMarkers(near: string | null) {
-    for (const [id, g] of this.markers) {
-      const on = id === near;
-      const ring = g.children[0] as THREE.Mesh;
-      const arrow = g.children[1];
-      const pulse = 1 + Math.sin(this.time * 4) * 0.08;
-      ring.scale.setScalar(on ? 1.5 * pulse : 1);
-      (ring.material as THREE.MeshBasicMaterial).opacity = on ? 0.9 : 0.3;
-      arrow.visible = on;
-      arrow.position.y = 2.25 + Math.sin(this.time * 3) * 0.08;
-      arrow.rotation.y = this.time * 2;
-    }
+    this.canvas.remove();
   }
 
   // ------------------------------------------------------------------ input
@@ -229,7 +145,7 @@ export class World {
     }
     if (w.screen !== 'explore') return;
     this.keys.add(e.code);
-    if (e.code === 'KeyE' && !e.repeat) this.interact();
+    if ((e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') && !e.repeat) this.interact();
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   };
 
@@ -237,142 +153,153 @@ export class World {
 
   private onBlur = () => this.keys.clear();
 
-  private onPointerDown = (e: PointerEvent) => {
-    if (!this.exploring) return;
-    if (e.pointerType === 'mouse' && !document.pointerLockElement) {
-      // Pointer lock gives FPS-style mouse look; if refused, dragging still orbits.
-      (this.renderer.domElement.requestPointerLock() as unknown as Promise<void> | undefined)?.catch?.(() => {});
-    }
-    this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
-  };
-
-  private onPointerMove = (e: PointerEvent) => {
-    if (!this.exploring) return;
-    if (document.pointerLockElement === this.renderer.domElement) {
-      this.look(e.movementX, e.movementY, 0.0025);
-    } else if (this.drag && e.pointerId === this.drag.id) {
-      this.look(e.clientX - this.drag.x, e.clientY - this.drag.y, e.pointerType === 'mouse' ? 0.005 : 0.007);
-      this.drag.x = e.clientX;
-      this.drag.y = e.clientY;
-    }
-  };
-
-  private onPointerUp = (e: PointerEvent) => {
-    if (this.drag?.id === e.pointerId) this.drag = null;
-  };
-
-  private onLockChange = () => {
-    // Browsers swallow ESC to release the lock: treat that as "open the menu".
-    if (!document.pointerLockElement && this.exploring && !this.busy) this.pause();
-  };
-
-  private onWheel = (e: WheelEvent) => {
-    if (!this.exploring) return;
-    e.preventDefault();
-    this.dist = THREE.MathUtils.clamp(this.dist + Math.sign(e.deltaY) * 0.5, MIN_DIST, MAX_DIST);
-  };
-
-  private look(dx: number, dy: number, k: number) {
-    this.camYaw -= dx * k;
-    this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * k, -0.15, 1.2);
-  }
-
-  /** Two-finger pinch from the touch UI. */
-  zoom(delta: number) {
-    this.dist = THREE.MathUtils.clamp(this.dist + delta, MIN_DIST, MAX_DIST);
-  }
-
   // ------------------------------------------------------------------ loop
   private loop = () => {
     this.raf = requestAnimationFrame(this.loop);
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const now = performance.now();
+    const dt = Math.min((now - this.last) / 1000, 0.05);
+    this.last = now;
     if (!this.live) return; // an activity owns the screen; the hall is frozen as left
+    this.frame(dt);
+  };
+
+  /** One simulation + render step. */
+  frame(dt: number) {
     this.time += dt;
     const w = useWorldStore.getState();
     if (w.screen === 'explore') this.move(dt);
-    else this.vel.multiplyScalar(0);
-    this.avatar.update(dt, this.vel.length(), this.time);
+    else this.vx = this.vy = 0;
 
     const near = w.screen === 'explore' ? nearestActivity(this.pos.x, this.pos.z)?.id ?? null : null;
     if (near !== w.nearby) w.setNearby(near);
-    this.updateMarkers(near);
-    this.updateCamera(dt, w.screen);
-    this.renderer.render(this.scene, this.camera);
-  };
+    const room = roomAt(this.pos.x, this.pos.z)?.name ?? this.room; // doorways keep the last room
+    if (room !== this.room) {
+      this.room = room;
+      if (w.screen === 'explore' && room) w.showToast(room);
+    }
+    this.render(w.screen, near);
+  }
 
   private move(dt: number) {
     const k = this.keys;
-    let fx = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0) + this.stick.x;
-    let fz = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0) + this.stick.y;
-    const mag = Math.min(1, Math.hypot(fx, fz));
+    let ix = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0) + this.stick.x;
+    let iy = (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0) - (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - this.stick.y;
+    const mag = Math.min(1, Math.hypot(ix, iy));
     if (mag > 0.01) {
-      const n = Math.hypot(fx, fz);
-      fx /= n;
-      fz /= n;
+      const n = Math.hypot(ix, iy);
+      ix /= n;
+      iy /= n;
     }
     const running = k.has('ShiftLeft') || k.has('ShiftRight') || this.stick.run;
-    const speed = (running ? RUN : WALK) * mag;
-    // Camera-relative: forward is where the camera looks.
-    const fwdX = -Math.sin(this.camYaw);
-    const fwdZ = -Math.cos(this.camYaw);
-    const tx = (fwdX * fz - fwdZ * fx) * speed;
-    const tz = (fwdZ * fz + fwdX * fx) * speed;
-    const a = damp(mag > 0.01 ? 10 : 14, dt);
-    this.vel.x += (tx - this.vel.x) * a;
-    this.vel.y += (tz - this.vel.y) * a;
-    if (this.busy) this.vel.multiplyScalar(0);
+    const speed = this.busy ? 0 : (running ? RUN : WALK) * mag;
+    const a = 1 - Math.exp(-(mag > 0.01 ? 18 : 22) * dt);
+    this.vx += (ix * speed - this.vx) * a;
+    this.vy += (iy * speed - this.vy) * a;
+    this.pos.x += this.vx * dt;
+    this.pos.z += this.vy * dt;
+    resolve(this.pos, RADIUS, this.boxes);
 
-    this.pos.x += this.vel.x * dt;
-    this.pos.z += this.vel.y * dt;
-    resolve(this.pos, RADIUS, this.hall.colliders);
-    this.avatar.root.position.set(this.pos.x, 0, this.pos.z);
-
-    if (this.vel.lengthSq() > 0.04) {
-      const target = Math.atan2(this.vel.x, this.vel.y);
-      let d = target - this.facing;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      this.facing += d * damp(12, dt);
-    }
-    this.avatar.root.rotation.y = this.facing;
+    const sp = Math.hypot(this.vx, this.vy);
+    if (sp > 0.3) {
+      this.dir = Math.abs(this.vx) > Math.abs(this.vy) ? (this.vx < 0 ? 1 : 2) : this.vy < 0 ? 3 : 0;
+      this.anim += dt * sp * 2.2;
+    } else this.anim = 0;
+    this.interactT = Math.max(0, this.interactT - dt);
   }
 
-  private updateCamera(dt: number, screen: string) {
-    const pivot = new THREE.Vector3(this.pos.x, EYE, this.pos.z);
-    if (screen === 'title' || screen === 'loading' || screen === 'character' || screen === 'controls' || screen === 'stats') {
-      // Slow cinematic orbit around the hall behind the menus.
-      const t = this.time * 0.07;
-      this.camera.position.set(Math.sin(t) * 9, 4.2, Math.cos(t) * 7);
-      this.camera.lookAt(0, 1, -1);
-      if (screen === 'character') {
-        this.camera.position.set(this.pos.x - Math.sin(this.facing) * -2.4, 1.4, this.pos.z + Math.cos(this.facing) * 2.4);
-        this.camera.lookAt(this.pos.x, 1.05, this.pos.z);
-      }
-      this.avatar.root.position.set(this.pos.x, 0, this.pos.z);
-      this.avatar.root.rotation.y = this.facing;
-      return;
+  // ------------------------------------------------------------------ render
+  private render(screen: string, near: string | null) {
+    const g = this.g;
+    const W = this.canvas.width;
+    const H = this.canvas.height;
+    let s = this.scale;
+    let cx = this.pos.x * TILE;
+    let cy = this.pos.z * TILE - 8;
+    if (screen === 'title' || screen === 'controls' || screen === 'stats' || screen === 'loading') {
+      // Slow pan over the map behind the menus.
+      cx = (MAP_W * TILE) / 2 + Math.sin(this.time * 0.08) * 220;
+      cy = (MAP_H * TILE) / 2 + Math.cos(this.time * 0.06) * 120;
+    } else if (screen === 'character') {
+      s = this.scale * 2;
+      cx -= 40;
     }
-    const dir = new THREE.Vector3(Math.sin(this.camYaw) * Math.cos(this.camPitch), Math.sin(this.camPitch), Math.cos(this.camYaw) * Math.cos(this.camPitch));
-    // Keep the camera on the near side of walls and pillars.
-    this.raycaster.set(pivot, dir);
-    this.raycaster.far = this.dist;
-    const hit = this.raycaster.intersectObjects(this.hall.occluders, false)[0];
-    const want = hit ? Math.max(0.4, hit.distance - 0.25) : this.dist;
-    if (this.snapCam) this.camDist = want;
-    this.camDist += (want - this.camDist) * (want < this.camDist ? 1 : damp(6, dt));
-    const camPos = pivot.clone().addScaledVector(dir, this.camDist);
-    camPos.y = Math.min(camPos.y, 4.7);
-    if (this.snapCam) this.camera.position.copy(camPos);
-    else this.camera.position.lerp(camPos, damp(18, dt));
-    this.snapCam = false;
-    this.camera.lookAt(pivot.x, pivot.y - 0.15, pivot.z);
+    const vw = W / s;
+    const vh = H / s;
+    // Keep the view on the map (or centred if the map is smaller than the screen).
+    const clamp = (c: number, v: number, size: number) => (size <= v ? size / 2 : Math.min(Math.max(c, v / 2), size - v / 2));
+    cx = clamp(cx, vw, MAP_W * TILE);
+    cy = clamp(cy, vh, MAP_H * TILE);
+    const ox = Math.round(cx - vw / 2);
+    const oy = Math.round(cy - vh / 2);
+
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.imageSmoothingEnabled = false;
+    px(g, 0, 0, W, H, '#05060d');
+    g.setTransform(s, 0, 0, s, -ox * s, -oy * s);
+    g.drawImage(this.staticLayer, 0, 0);
+
+    // Activity markers on the floor.
+    for (const a of ACTIVITIES) {
+      const on = a.id === near;
+      const r = (on ? 10 + Math.sin(this.time * 6) : 6) | 0;
+      g.strokeStyle = a.color + (on ? 'ee' : '55');
+      g.lineWidth = 1;
+      g.beginPath();
+      g.ellipse(Math.round(a.x * TILE), Math.round(a.y * TILE), r, r * 0.5, 0, 0, Math.PI * 2);
+      g.stroke();
+    }
+
+    // Depth-sorted props and the player (by bottom edge).
+    const items: Array<{ y: number; draw: () => void }> = [];
+    for (const p of PROPS) {
+      if (p.layer !== 'sort') continue;
+      if (p.x > ox + vw || p.x + p.w < ox || p.y > oy + vh || p.y + p.h < oy) continue;
+      items.push({
+        y: p.y + p.h,
+        draw: () => {
+          g.save();
+          g.translate(p.x, p.y);
+          p.draw(g, p.animated ? this.time : 0);
+          g.restore();
+        },
+      });
+    }
+    const outfit = OUTFITS[useWorldStore.getState().outfit]?.outfit ?? OUTFITS[0].outfit;
+    const frame = this.interactT > 0 ? 1 : this.anim ? 1 + (Math.floor(this.anim) % 4) : 0;
+    const sg = this.sprite.getContext('2d')!;
+    sg.clearRect(0, 0, 16, 24);
+    character(sg, outfit, this.interactT > 0 ? 3 : this.dir, frame);
+    const feetY = Math.round(this.pos.z * TILE);
+    items.push({ y: feetY + 0.5, draw: () => g.drawImage(this.sprite, Math.round(this.pos.x * TILE) - 8, feetY - 23) });
+    items.sort((a, b) => a.y - b.y);
+    for (const it of items) it.draw();
+
+    // Rooms you are not in sit in the dark, so the map reads room by room.
+    if (screen === 'explore' || screen === 'paused') {
+      g.fillStyle = '#05060dad';
+      for (const r of ROOMS) if (r.name !== this.room) g.fillRect((r.x0 + 1) * TILE, (r.y0 + 1) * TILE, (r.x1 - r.x0 - 1) * TILE, (r.y1 - r.y0 - 1) * TILE);
+    }
+
+    // Bouncing arrow over the player when an activity is in range.
+    if (near) {
+      const a = ACTIVITIES.find((x) => x.id === near)!;
+      const bx = Math.round(this.pos.x * TILE);
+      const by = feetY - 34 + Math.round(Math.sin(this.time * 6) * 2);
+      g.fillStyle = a.color;
+      for (let i = 0; i < 4; i++) g.fillRect(bx - 3 + i, by + i, 7 - i * 2, 1);
+      g.fillRect(bx - 1, by - 4, 3, 4);
+    }
   }
 
   private resize = () => {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = this.host.clientWidth || window.innerWidth;
     const h = this.host.clientHeight || window.innerHeight;
-    this.renderer.setSize(w, h);
-    this.camera.aspect = w / h;
-    this.camera.fov = w / h < 1 ? 75 : 60;
-    this.camera.updateProjectionMatrix();
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    this.canvas.style.width = `${w}px`;
+    this.canvas.style.height = `${h}px`;
+    // Integer zoom keeps every pixel square.
+    this.scale = Math.max(2, Math.round(this.canvas.height / (VIEW_TILES * TILE)));
   };
 }
