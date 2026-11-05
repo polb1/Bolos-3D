@@ -22,7 +22,7 @@ const LINE_Z = BALL.radius + 0.02; // the hand stops at the foul line
 const MIN_THROW = 1.2; // m/s forward below which the ball is just put down again
 const MAX_ANGLE = 0.06; // rad: wilder strokes are clamped (they would be gutter balls anyway)
 const ARM_GAIN = 1.2; // the mouse stroke is shorter than a real arm swing: boost its speed a bit
-const AIM_DAMP = 0.6; // sideways jitter of the mouse is larger than a bowler's: soften the angle
+const AIM_DAMP = 0.85; // sideways jitter of the mouse is larger than a bowler's: soften the angle
 const SPIN_RATE = 0.9; // wrist preset change per second while Q/E is held
 
 type Mode = 'idle' | 'aim' | 'grab' | 'rolling' | 'settling' | 'result' | 'sweep';
@@ -215,9 +215,9 @@ export class Game {
     const st = useGameStore.getState();
     const g = this.rng;
     // The hand is never perfectly repeatable: a little release noise on top of the stroke.
-    const angle = clamp(r.angle * AIM_DAMP, -MAX_ANGLE, MAX_ANGLE) + gaussian(g, 0.0015);
-    const speed = clamp(r.speed * ARM_GAIN * (1 + gaussian(g, 0.015)), BALL.minSpeed * 0.6, BALL.maxSpeed * 1.1);
-    const spin = clamp(st.aim.spin + r.curve * 1.6 + gaussian(g, 0.05), -1.2, 1.2);
+    const angle = clamp(r.angle * AIM_DAMP, -MAX_ANGLE, MAX_ANGLE) + gaussian(g, 0.003);
+    const speed = clamp(r.speed * ARM_GAIN * (1 + gaussian(g, 0.025)), BALL.minSpeed * 0.6, BALL.maxSpeed * 1.1);
+    const spin = clamp(st.aim.spin + r.curve * 1.6 + gaussian(g, 0.08), -1.2, 1.2);
     st.setLastThrow({ kmh: speed * 3.6, angleDeg: (angle * 180) / Math.PI, spin });
     this.restX = this.held.x;
     this.physics.resetTilt();
