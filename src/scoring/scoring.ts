@@ -177,8 +177,7 @@ export function gameStats(rolls: Roll[]): GameStats {
       if (m === 'F') stats.fouls++;
     }
   }
-  splitFrames(rolls).forEach((f, n) => {
-    if (n < FRAMES - 1 && f.length === 2 && f[0].pins + f[1].pins < PINS) stats.opens++;
-  });
+  // An open frame is two balls that leave pins, the tenth included (it then gets no bonus ball).
+  for (const f of splitFrames(rolls)) if (f.length === 2 && f[0].pins < PINS && f[0].pins + f[1].pins < PINS) stats.opens++;
   return stats;
 }

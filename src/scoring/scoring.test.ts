@@ -105,6 +105,11 @@ describe('scoring', () => {
     expect(maxPossible(r(7))).toBe(290);
   });
 
+  it('an open tenth frame counts as open', () => {
+    expect(gameStats(r(...Array(18).fill(0), 3, 4)).opens).toBe(10);
+    expect(gameStats(r(...Array(18).fill(0), 10, 3, 4)).opens).toBe(9);
+  });
+
   it('stats', () => {
     const g = r(1, 4, 4, 5, 6, 4, 5, 5, 10, 0, 1, 7, 3, 6, 4, 10, 2, 8, 6);
     expect(gameStats(g)).toMatchObject({ strikes: 2, spares: 5, opens: 3 });
