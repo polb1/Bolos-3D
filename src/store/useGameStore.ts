@@ -32,6 +32,8 @@ export interface Stats {
   best: number;
   strikes: number;
   spares: number;
+  /** Stepladder tournaments won against the AI. */
+  titles: number;
 }
 
 interface State {
@@ -88,7 +90,7 @@ export const useGameStore = create<State>((set, get) => ({
   screen: 'loading',
   loadError: null,
   settings: storage.get('settings', DEFAULT_SETTINGS),
-  stats: storage.get<Stats>('stats', { games: 0, best: 0, strikes: 0, spares: 0 }),
+  stats: storage.get<Stats>('stats', { games: 0, best: 0, strikes: 0, spares: 0, titles: 0 }),
   muted: storage.getRaw('muted', false),
   players: [],
   current: 0,
@@ -155,8 +157,8 @@ export const useGameStore = create<State>((set, get) => ({
       best: Math.max(stats.best, best),
       strikes: stats.strikes + totals.strikes,
       spares: stats.spares + totals.spares,
+      titles: stats.titles ?? 0,
     };
-    storage.set('stats', next);
     let earned = humanPlayers.filter((p) => currentScore(p.rolls) > COIN_THRESHOLD).length * COIN_REWARD;
     const { ladder } = get();
     let ladderResult: State['ladderResult'] = null;
@@ -166,7 +168,9 @@ export const useGameStore = create<State>((set, get) => ({
       const won = me > ai || (me === ai && tiebreak === 0);
       ladderResult = !won ? 'lose' : ladder === LADDER.length - 1 ? 'champion' : 'win';
       earned += ladderResult === 'champion' ? LADDER_TITLE_COINS : won ? LADDER_WIN_COINS : 0;
+      if (ladderResult === 'champion') next.titles++;
     }
+    storage.set('stats', next);
     const coins = get().coins + earned;
     storage.set('coins', coins);
     set({ stats: next, newRecord: best > stats.best && best > 0, screen: 'end', cine: false, coins, earned, ladderResult });

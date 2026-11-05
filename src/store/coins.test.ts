@@ -23,7 +23,9 @@ describe('stepladder vs AI', () => {
       return s.getState();
     };
     expect(game(4, 3, 0)).toMatchObject({ ladderResult: 'win', coins: 15 });
+    const titles = s.getState().stats.titles;
     expect(game(4, 3, 2)).toMatchObject({ ladderResult: 'champion', coins: 60 });
+    expect(s.getState().stats.titles).toBe(titles + 1);
     expect(game(3, 3, 1)).toMatchObject({ ladderResult: 'lose', coins: 0 });
     // A tie is decided by the roll-off winner Game passes in.
     s.setState({ ladder: 1, coins: 0, players: [{ name: 'Yo', rolls: Array(20).fill({ pins: 3 }) }, { name: 'IA', rolls: Array(20).fill({ pins: 3 }), ai: 1 }] });
@@ -35,7 +37,7 @@ describe('stepladder vs AI', () => {
 describe('personal stats', () => {
   it("do not count the AI's strikes", () => {
     const s = useGameStore;
-    s.setState({ ladder: 0, stats: { games: 0, best: 0, strikes: 0, spares: 0 }, players: [{ name: 'Yo', rolls: Array(20).fill({ pins: 1 }) }, { name: 'IA', rolls: Array(12).fill({ pins: 10 }), ai: 0 }] });
+    s.setState({ ladder: 0, stats: { games: 0, best: 0, strikes: 0, spares: 0, titles: 0 }, players: [{ name: 'Yo', rolls: Array(20).fill({ pins: 1 }) }, { name: 'IA', rolls: Array(12).fill({ pins: 10 }), ai: 0 }] });
     s.getState().finishMatch();
     expect(s.getState().stats).toMatchObject({ games: 1, best: 20, strikes: 0 });
   });

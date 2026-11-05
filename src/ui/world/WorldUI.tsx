@@ -23,11 +23,12 @@ function Back({ to = 'title' }: { to?: WorldScreen }) {
 
 function Title() {
   const setScreen = useWorldStore((s) => s.setScreen);
+  const coins = useGameStore((s) => s.coins);
   return (
     <div className="screen world-title">
       <div className="menu-hero">
         <div className="menu-topbar">
-          <span className="record-chip" title="Monedas">🪙 {useGameStore.getState().coins}</span>
+          <span className="record-chip" title="Monedas">🪙 {coins}</span>
           <MuteButton />
         </div>
         <h1 className="game-title big">
@@ -107,6 +108,7 @@ function Stats() {
       <div className="panel">
         <h2>Estadísticas</h2>
         <p className="stats-line">🎳 Bolera: {stats.games} partidas · récord {stats.best} · {stats.strikes} strikes · {stats.spares} spares</p>
+        <p className="stats-line">🏆 Torneos vs IA ganados: {stats.titles ?? 0}</p>
         <p className="stats-line">🪙 {coins} monedas · {owned.length} objetos comprados</p>
         <p className="stats-line">Billar, air hockey, futbolín y dardos: llegarán con sus juegos.</p>
         <Back />
