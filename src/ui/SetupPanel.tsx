@@ -133,7 +133,7 @@ export function SetupPanel() {
         <div className="setup-grid" role="tabpanel">{content}</div>
         <p className="setup-note">Los cambios se ven en directo sobre la pista.</p>
         <div className="setup-actions">
-          <button className="btn primary" onClick={() => (audio.unlock(), gameRef.current?.startMatch())}>
+          <button className="btn primary" onClick={() => (audio.unlock(), useGameStore.getState().setLadder(null), gameRef.current?.startMatch())}>
             ▶ Jugar
           </button>
           <button className="btn ghost" onClick={() => setScreen('menu')}>
