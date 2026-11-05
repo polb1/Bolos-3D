@@ -177,7 +177,7 @@ function TouchPad() {
     knob.current!.style.transform = '';
   };
   return (
-    <div className="touch-pad">
+    <div className="world-pad">
       <div
         ref={base}
         className="joy"

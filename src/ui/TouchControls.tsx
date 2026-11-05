@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { gameRef } from '../game/instance';
+import { useGameStore } from '../store/useGameStore';
 
 /** Press-and-hold wrist-spin button; throwing itself is done by dragging the ball. */
 function SpinButton({ dir, label, aria }: { dir: number; label: string; aria: string }) {
@@ -23,6 +24,8 @@ function SpinButton({ dir, label, aria }: { dir: number; label: string; aria: st
 }
 
 export function TouchControls() {
+  const aiTurn = useGameStore((s) => s.players[s.current]?.ai !== undefined);
+  if (aiTurn) return null;
   return (
     <div id="touch-controls">
       <div className="touch-pad">

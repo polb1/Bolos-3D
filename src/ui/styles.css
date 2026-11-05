@@ -350,9 +350,9 @@ html, body, #root {
 }
 .world-fade.on { opacity: 1; }
 .controls-table p { margin: 6px 0; color: var(--blue-1); }
-.touch-pad { display: none; }
+.world-pad { display: none; }
 .mobile-only { display: none; }
-body.touch-active .touch-pad { display: block; }
+body.touch-active .world-pad { display: block; }
 body.touch-active .mobile-only { display: inline; }
 body.touch-active .world-help { display: none; }
 .joy {
