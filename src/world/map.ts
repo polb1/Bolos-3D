@@ -84,7 +84,7 @@ function add(tx: number, ty: number, w: number, h: number, draw: (g: G, t: numbe
 // Bowling: four lanes into the north wall, ball returns and benches.
 [2, 6, 10, 14].forEach((tx, i) => add(tx, 1, 32, 112, (g) => S.lane(g, i + 1), { layer: 'floor', foot: null }));
 props.push({ x: 2 * T, y: T, w: 14 * T, h: 7 * T, solid: [2, 1, 14, 7], layer: 'floor', draw: () => {} });
-for (const tx of [4.5, 12.5]) add(tx, 8, 16, 32, S.ballReturn, { foot: [1, 1.6] });
+for (const tx of [4.5, 12.5]) add(tx, 8, 16, 32, S.ballReturn, { foot: [1, 1] }); // leave a full tile free below: the approach must stay walkable
 add(2, 10, 48, 14, (g) => S.sofa(g, 48, '#1d4fc4'), { foot: [3, 0.9] });
 add(13, 10, 48, 14, (g) => S.sofa(g, 48, '#1d4fc4'), { foot: [3, 0.9] });
 add(18, 1, 16, 16, S.plant);
