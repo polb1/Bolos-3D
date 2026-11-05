@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { audio } from '../audio/AudioEngine';
 import { BALL_COLORS, WOODS } from '../config/settings';
 import { gameRef } from '../game/instance';
@@ -10,6 +11,13 @@ export function MainMenu() {
   const stats = useGameStore((s) => s.stats);
   const updateSettings = useGameStore((s) => s.updateSettings);
   const setScreen = useGameStore((s) => s.setScreen);
+
+  // ESC on the bowling menu walks back out to the hall.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.code === 'Escape' && worldRef.current?.leave();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const play = (players: 1 | 2) => {
     audio.unlock();
@@ -51,7 +59,7 @@ export function MainMenu() {
             ⚙ Personalizar partida
           </button>
           <button className="btn ghost" onClick={() => (audio.ui(), worldRef.current?.leave())}>
-            ← Volver al local
+            ← Volver al local <span className="desktop-only">(ESC)</span>
           </button>
         </div>
         <div className="menu-summary">
