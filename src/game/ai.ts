@@ -2,6 +2,7 @@ import { BALL, rackPositions } from '../config/constants';
 import type { LaunchParams } from '../physics/PhysicsWorld';
 import { clamp } from '../utils/math';
 import { gaussian, type Rng } from '../utils/random';
+import { isSplit } from './match';
 
 /** A computer bowler: how far its release strays from what it aims for. */
 export interface Rival {
@@ -37,10 +38,12 @@ export function aiThrow(standing: number[], rival: Rival, rng: Rng): Omit<Launch
   const fresh = standing.length === 10;
   let target = POCKET_X;
   if (!fresh && standing.length) {
-    // Spare: go for the middle of what is left, leaning to the pin closest to the bowler.
-    const xs = standing.map((i) => spots[i][0]);
-    const front = standing.reduce((a, b) => (spots[a][1] > spots[b][1] ? a : b));
-    target = (xs.reduce((a, b) => a + b, 0) / xs.length + spots[front][0]) / 2;
+    // A split has a gap in the middle: aim at one side instead of the hole.
+    const group = isSplit(standing) ? pickSide(standing, spots) : standing;
+    const xs = group.map((i) => spots[i][0]);
+    const lead = group.reduce((a, b) => (spots[a][1] > spots[b][1] ? a : b));
+    // Spare: the middle of what is left, leaning to the pin closest to the bowler.
+    target = (xs.reduce((a, b) => a + b, 0) / xs.length + spots[lead][0]) / 2;
   }
   return {
     x: clamp(target + gaussian(rng, rival.sx), -BALL.maxOffset, BALL.maxOffset),
@@ -48,4 +51,15 @@ export function aiThrow(standing: number[], rival: Rival, rng: Rng): Omit<Launch
     speed: 9.2 * (1 + gaussian(rng, rival.sv)),
     spin: 0,
   };
+}
+
+/** The larger of the left / right groups of a split (ties: the side nearer the bowler). */
+function pickSide(standing: number[], spots: Array<[number, number]>) {
+  const left = standing.filter((i) => spots[i][0] < 0);
+  const right = standing.filter((i) => spots[i][0] > 0);
+  const mid = standing.filter((i) => spots[i][0] === 0);
+  if (!left.length || !right.length) return standing;
+  const front = (g: number[]) => Math.max(...g.map((i) => spots[i][1]));
+  const pick = left.length !== right.length ? (left.length > right.length ? left : right) : front(left) >= front(right) ? left : right;
+  return [...pick, ...mid];
 }

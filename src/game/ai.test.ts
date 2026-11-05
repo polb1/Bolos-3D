@@ -39,3 +39,17 @@ describe('AI rivals', () => {
     expect(avg[2]).toBeGreaterThan(160);
   }, 120_000);
 });
+
+describe('AI aiming', () => {
+  const perfect: Rival = { name: 't', average: 300, sx: 0, sa: 0, sv: 0 };
+  const rng = createRng(1);
+  it('aims at one side of a split, not at the gap', () => {
+    const x = aiThrow([6, 9], perfect, rng).x; // 7-10
+    expect(Math.abs(x)).toBeGreaterThan(0.2);
+    const y = aiThrow([3, 6, 9], perfect, rng).x; // 4-7-10: the 4-7 side has more pins
+    expect(y).toBeLessThan(-0.2);
+  });
+  it('goes for the pocket on a full rack', () => {
+    expect(aiThrow([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], perfect, rng).x).toBeCloseTo(0.06);
+  });
+});
