@@ -1,6 +1,6 @@
-# Bolera 3D
+# Virtual Arcade · Bolera 3D
 
-Simulador de bolos de diez en el navegador: pista reglamentaria en 3D, física de cuerpos rígidos real (Rapier) y puntuación oficial. Su interfaz parte del análisis de *Pádel 3D* (ver [REVERSE_ENGINEERING.md](REVERSE_ENGINEERING.md)).
+Centro recreativo en pixel art por el que se camina por salas; dentro, los juegos son 3D. El principal es un simulador de bolos de diez: pista reglamentaria en 3D, física de cuerpos rígidos real (Rapier) y puntuación oficial. Su interfaz parte del análisis de *Pádel 3D* (ver [REVERSE_ENGINEERING.md](REVERSE_ENGINEERING.md)).
 
 ## Uso
 
@@ -20,7 +20,7 @@ No hay barra de potencia ni línea de tiro: **el lanzamiento es el gesto**.
 1. Agarra la bola (ratón o dedo) en la zona de aproximación.
 2. Échala hacia atrás y lánzala hacia los bolos soltando el botón o el dedo.
 3. La **velocidad y la dirección** de la bola son las de tu mano en los últimos ~80 ms; si el gesto **se curva** al final, la bola sale con efecto (como girar la muñeca).
-4. La mano no puede pasar de la **línea de falta**: si llegas a ella arrastrando, la bola se suelta ahí con la velocidad que llevabas. Un gesto demasiado lento (< 1,5 m/s) solo deja la bola en el suelo.
+4. La mano no puede pasar de la **línea de falta**: si llegas a ella arrastrando, la bola se suelta ahí con la velocidad que llevabas. Un gesto demasiado lento (< 1,2 m/s) solo deja la bola en el suelo.
 
 | Acción | Escritorio | Táctil |
 |---|---|---|
@@ -28,6 +28,16 @@ No hay barra de potencia ni línea de tiro: **el lanzamiento es el gesto**.
 | Cámara · sonido · pausa | `C` · `M` · `ESC` | botones superiores |
 
 Tras cada tiro se muestra lo que hiciste: km/h, ángulo y efecto.
+
+### En el local
+
+`WASD` o flechas para moverte, `Shift` para correr, `E` para jugar a lo que tengas delante y `ESC` para el menú. En móvil, joystick y el aviso de la actividad como botón.
+
+## Modos y progresión
+
+- **Partida individual** y **duelo local** de 2 jugadores.
+- **Torneo vs IA** en formato *stepladder* (como las finales profesionales): entras como 4.º y juegas contra el #3, el #2 y el #1 (medias 150 / 190 / 225). La IA lanza a través de la misma física con un error humano según su nivel; en un split apunta al lado con más bolos. Un empate se decide con una bola de desempate.
+- **Monedas**: 20 por superar 100 puntos, 15 por ronda ganada en el torneo y 60 por el título. Se gastan en colores de bola y maderas de pista en *Personalizar partida*.
 
 ## Cómo funciona la física
 
@@ -42,16 +52,19 @@ Tras cada tiro se muestra lo que hiciste: km/h, ángulo y efecto.
 
 ## Arquitectura
 
+Decisiones del centro recreativo en [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ```
 src/
+  world/      local pixel art: World.ts (canvas 2D), map.ts (salas), sprites.ts, activities.ts
   config/     constants.ts (medidas y parámetros físicos), settings.ts (opciones y calidad)
   physics/    PhysicsWorld.ts (mundo Rapier: pista, canaletas, foso, bola, bolos), pinShape.ts
   scoring/    scoring.ts — reglas oficiales, funciones puras
   game/       Game.ts (bucle, fases, cámara), PinRack.ts (bolos + recolocadora),
-              SwingTracker.ts (gesto → tiro), Input.ts, match.ts (turnos, splits, banners)
+              SwingTracker.ts (gesto → tiro), Input.ts, match.ts (turnos, splits, banners), ai.ts (rivales)
   scene/      Alley.ts (bolera, luces), pinMesh.ts, textures.ts (texturas procedurales)
   audio/      AudioEngine.ts
-  store/      useGameStore.ts (Zustand: pantallas, partida, HUD, ajustes, estadísticas)
+  store/      useGameStore.ts (Zustand: pantallas, partida, HUD, ajustes, estadísticas, monedas)
   ui/         componentes React (menú, configuración, HUD, marcador, pausa, resultados, táctil)
   utils/      storage.ts, math.ts
 ```
