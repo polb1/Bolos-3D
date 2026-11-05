@@ -25,7 +25,8 @@ export function EndPanel() {
   else if (ladderResult === 'win') title = `¡Eliminas a ${players[1].name}!`;
   else if (ladderResult === 'lose') title = `Eliminado por ${players[1].name}`;
 
-  const stats = gameStats(players[winner].rolls);
+  // In a match against the AI, the line under the score is always about you.
+  const stats = gameStats(players[ladder !== null ? 0 : winner].rolls);
   return (
     <div className="screen">
       <div className="panel end-panel">

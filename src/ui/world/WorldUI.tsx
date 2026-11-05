@@ -130,7 +130,7 @@ function Pause() {
         <div className="opt-row">
           {(['baja', 'media', 'alta'] as const).map((q) => (
             <button key={q} className={'opt' + (q === quality ? ' selected' : '')} onClick={click(() => update({ quality: q }))}>
-              Gráficos {q}
+              Gráficos 3D {q}
             </button>
           ))}
           <button className={'opt' + (crowd ? ' selected' : '')} onClick={click(() => (update({ crowd: !crowd }), audio.setAmbience(!crowd)))}>

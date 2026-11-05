@@ -1,5 +1,5 @@
 import { audio } from '../audio/AudioEngine';
-import { BALL_COLORS } from '../config/settings';
+import { BALL_COLORS, WOODS } from '../config/settings';
 import { gameRef } from '../game/instance';
 import { worldRef } from '../world/instance';
 import { useGameStore } from '../store/useGameStore';
@@ -58,7 +58,7 @@ export function MainMenu() {
           <span className="summary-chip">
             Bola {settings.ballWeight} lb · {BALL_COLORS[settings.ballColor]?.label}
           </span>
-          <span className="summary-chip">Madera {settings.wood}</span>
+          <span className="summary-chip">Pista {WOODS[settings.wood]?.label ?? settings.wood}</span>
           <span className="summary-chip">{settings.crowd ? 'Con público' : 'Sin público'}</span>
           <span className="summary-chip">Gráficos {settings.quality}</span>
         </div>
