@@ -306,6 +306,7 @@ export class World {
     this.canvas.style.width = `${w}px`;
     this.canvas.style.height = `${h}px`;
     // Integer zoom keeps every pixel square.
-    this.scale = Math.max(2, Math.round(this.canvas.height / (VIEW_TILES * TILE)));
+    // Fit ~VIEW_TILES tall and at least ~12 wide, so portrait phones still see the room.
+    this.scale = Math.max(2, Math.round(Math.min(this.canvas.height / (VIEW_TILES * TILE), this.canvas.width / (12 * TILE))));
   };
 }

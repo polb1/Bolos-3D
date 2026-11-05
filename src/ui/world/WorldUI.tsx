@@ -211,8 +211,15 @@ function Hud() {
       </div>
       {a && (
         <button className="world-prompt" style={{ borderColor: a.color }} onClick={click(() => worldRef.current?.interact())}>
-          <b style={{ color: a.color }}>{a.name}</b> · {a.place ? 'Pulsa E para jugar' : 'Próximamente'}
-          <span className="mobile-only"> ▶</span>
+          <b style={{ color: a.color }}>{a.name}</b> ·{' '}
+          {a.place ? (
+            <>
+              <span className="desktop-only">Pulsa E para jugar</span>
+              <span className="mobile-only">Toca para jugar ▶</span>
+            </>
+          ) : (
+            'Próximamente'
+          )}
         </button>
       )}
       {toast && <div className="world-toast">{toast}</div>}
