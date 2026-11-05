@@ -69,6 +69,22 @@ export class AudioEngine {
     this.tone(880, 'sine', this.ctx.currentTime, 0.05, 0.06);
   }
 
+  /** Soft footstep in the hall; `hard` floors (wood, tiles) click a little brighter than carpet. */
+  step(hard: boolean) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const src = this.noiseSource();
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = (hard ? 1400 : 500) + Math.random() * 200;
+    const g = ctx.createGain();
+    this.env(g, t, hard ? 0.09 : 0.05, 0.003, 0.06);
+    src.connect(lp).connect(g).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.1);
+  }
+
   /** Ball released: thud on the lane plus the start of the rolling rumble. */
   release() {
     if (!this.ctx) return;

@@ -202,7 +202,13 @@ export class World {
     const sp = Math.hypot(this.vx, this.vy);
     if (sp > 0.3) {
       this.dir = Math.abs(this.vx) > Math.abs(this.vy) ? (this.vx < 0 ? 1 : 2) : this.vy < 0 ? 3 : 0;
+      const before = Math.floor(this.anim);
       this.anim += dt * sp * 2.2;
+      // A footfall on every other animation frame (each foot touching down).
+      if (Math.floor(this.anim) !== before && Math.floor(this.anim) % 2 === 0) {
+        const floor = roomAt(this.pos.x, this.pos.z)?.floor;
+        audio.step(floor === 'bowling' || floor === 'bar' || floor === 'darts' || floor === 'hockey');
+      }
     } else this.anim = 0;
     this.interactT = Math.max(0, this.interactT - dt);
   }
