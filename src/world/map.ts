@@ -143,7 +143,7 @@ for (const [x, y] of [[13, 12], [30, 12], [13, 28], [30, 28]]) add(x, y, 16, 16,
 export const PROPS = props;
 
 /** Neon signs painted on the wall row above each room. */
-export const SIGNS: Array<{ text: string; x: number; y: number; color: string }> = [
+const SIGNS: Array<{ text: string; x: number; y: number; color: string }> = [
   { text: 'BOWLING', x: 9.5, y: 0.6, color: '#d8f24a' },
   { text: 'BILLAR', x: 31.5, y: 0.6, color: '#4fb6ff' },
   { text: 'DARDOS', x: 6, y: 11.6, color: '#ffb84f' },

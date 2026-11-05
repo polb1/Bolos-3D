@@ -13,7 +13,7 @@ export const px = (g: G, x: number, y: number, w: number, h: number, c: string) 
 };
 
 /** Deterministic per-tile noise so floors vary without flicker. */
-export const hash = (x: number, y: number) => {
+const hash = (x: number, y: number) => {
   let h = (x * 374761393 + y * 668265263) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967295;

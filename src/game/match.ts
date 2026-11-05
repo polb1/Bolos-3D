@@ -22,10 +22,6 @@ export function nextPlayer(players: PlayerGame[]): number {
   return best;
 }
 
-export function matchOver(players: PlayerGame[]): boolean {
-  return nextPlayer(players) === -1;
-}
-
 /** Pin adjacency on the rack (indices 0–9 = pins 1–10). */
 const ADJ: number[][] = [
   [1, 2], [0, 2, 3, 4], [0, 1, 4, 5], [1, 4, 6, 7], [1, 2, 3, 5, 7, 8],
