@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_SETTINGS, type Settings } from '../config/settings';
+import { COIN_REWARD, COIN_THRESHOLD, DEFAULT_SETTINGS, type Settings } from '../config/settings';
 import type { PlayerGame } from '../game/match';
 import { currentScore, gameStats, type Roll } from '../scoring/scoring';
 import { storage } from '../utils/storage';
@@ -49,6 +49,11 @@ interface State {
   /** Overhead TV clip playing. */
   tv: boolean;
   newRecord: boolean;
+  coins: number;
+  /** Shop items bought (ball colours and lane woods share one id space). */
+  owned: string[];
+  /** Coins won in the match that just ended. */
+  earned: number;
 
   setScreen(s: Screen): void;
   setLoadError(e: string): void;
@@ -65,6 +70,8 @@ interface State {
   setCine(on: boolean): void;
   setTv(on: boolean): void;
   finishMatch(): void;
+  /** Spends coins on a shop item; false if already owned or unaffordable. */
+  buy(id: string, price: number): boolean;
 }
 
 let bannerId = 0;
@@ -84,6 +91,9 @@ export const useGameStore = create<State>((set, get) => ({
   cine: false,
   tv: false,
   newRecord: false,
+  coins: storage.getRaw('coins', 0),
+  owned: storage.getRaw<string[]>('owned', []),
+  earned: 0,
 
   setScreen: (screen) => set({ screen }),
   setLoadError: (loadError) => set({ loadError }),
@@ -132,6 +142,18 @@ export const useGameStore = create<State>((set, get) => ({
       spares: stats.spares + totals.spares,
     };
     storage.set('stats', next);
-    set({ stats: next, newRecord: best > stats.best && best > 0, screen: 'end', cine: false });
+    const earned = players.filter((p) => currentScore(p.rolls) > COIN_THRESHOLD).length * COIN_REWARD;
+    const coins = get().coins + earned;
+    storage.set('coins', coins);
+    set({ stats: next, newRecord: best > stats.best && best > 0, screen: 'end', cine: false, coins, earned });
+  },
+  buy: (id, price) => {
+    const { coins, owned } = get();
+    if (owned.includes(id) || coins < price) return false;
+    const next = { coins: coins - price, owned: [...owned, id] };
+    storage.set('coins', next.coins);
+    storage.set('owned', next.owned);
+    set(next);
+    return true;
   },
 }));

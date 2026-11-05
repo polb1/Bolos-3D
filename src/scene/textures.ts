@@ -1,3 +1,4 @@
+import { WOODS } from '../config/settings';
 import * as THREE from 'three';
 import { LANE } from '../config/constants';
 
@@ -16,19 +17,20 @@ function seeded(seed: number) {
 }
 
 /** Maple/pine boards running along the lane; repeats along its length. */
-export function laneWoodTexture(tone: 'clara' | 'oscura', anisotropy: number) {
+export function laneWoodTexture(tone: string, anisotropy: number) {
   const [c, g] = canvas(1024, 1024);
+  const wood = WOODS[tone] ?? WOODS.clara;
   const rnd = seeded(tone === 'clara' ? 7 : 11);
   const boards = LANE.boardCount;
   const bw = c.width / boards;
-  const base = tone === 'clara' ? [222, 178, 122] : [150, 92, 52];
+  const base = wood.base;
   for (let b = 0; b < boards; b++) {
     const k = 0.86 + rnd() * 0.22;
     g.fillStyle = `rgb(${base[0] * k},${base[1] * k},${base[2] * k})`;
     g.fillRect(b * bw, 0, bw + 1, c.height);
     // Grain streaks.
     for (let s = 0; s < 14; s++) {
-      g.strokeStyle = `rgba(${tone === 'clara' ? '120,70,30' : '60,30,10'},${0.05 + rnd() * 0.1})`;
+      g.strokeStyle = `rgba(${wood.grain},${0.05 + rnd() * 0.1})`;
       g.lineWidth = 0.6 + rnd() * 1.2;
       const x = b * bw + rnd() * bw;
       g.beginPath();

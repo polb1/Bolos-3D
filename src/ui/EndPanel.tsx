@@ -6,6 +6,8 @@ import { ScoreSheet } from './ScoreSheet';
 export function EndPanel() {
   const players = useGameStore((s) => s.players);
   const newRecord = useGameStore((s) => s.newRecord);
+  const earned = useGameStore((s) => s.earned);
+  const coins = useGameStore((s) => s.coins);
   const scores = players.map((p) => currentScore(p.rolls));
   const best = Math.max(...scores);
   const winner = scores.indexOf(best);
@@ -22,6 +24,9 @@ export function EndPanel() {
         <h2>{title}</h2>
         {newRecord && <div className="end-record">★ NUEVO RÉCORD ★</div>}
         <div className="end-score">{best}</div>
+        <p className="stats-line">
+          {earned ? `+${earned} 🪙 ganadas` : 'Supera 100 puntos para ganar monedas'} · tienes {coins} 🪙
+        </p>
         <p className="stats-line">
           {stats.strikes} strikes · {stats.spares} spares · {stats.opens} frames abiertos
           {stats.fouls ? ` · ${stats.fouls} faltas` : ''}

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { audio } from '../audio/AudioEngine';
-import { BALL_COLORS, type Settings } from '../config/settings';
+import { BALL_COLORS, WOODS, type Settings } from '../config/settings';
 import { gameRef } from '../game/instance';
 import { useGameStore } from '../store/useGameStore';
 
@@ -15,25 +15,38 @@ const TABS: Array<[Tab, string]> = [
 function Options<T extends string | number | boolean>(props: {
   label: string;
   value: T;
-  options: Array<{ value: T; label: string; color?: string }>;
+  options: Array<{ value: T; label: string; color?: string; price?: number }>;
   onChange(v: T): void;
 }) {
+  const owned = useGameStore((s) => s.owned);
+  const coins = useGameStore((s) => s.coins);
+  const buy = useGameStore((s) => s.buy);
   return (
     <div className="opt-group" role="radiogroup" aria-label={props.label}>
       <span className="lbl">{props.label}</span>
       <div className="opt-row">
-        {props.options.map((o) => (
-          <button
-            key={String(o.value)}
-            role="radio"
-            aria-checked={o.value === props.value}
-            className={'opt' + (o.value === props.value ? ' selected' : '')}
-            onClick={() => (audio.ui(), props.onChange(o.value))}
-          >
-            {o.color && <i className="dot" style={{ background: o.color }} />}
-            {o.label}
-          </button>
-        ))}
+        {props.options.map((o) => {
+          const locked = !!o.price && !owned.includes(String(o.value));
+          return (
+            <button
+              key={String(o.value)}
+              role="radio"
+              aria-checked={o.value === props.value}
+              className={'opt' + (o.value === props.value ? ' selected' : '')}
+              disabled={locked && coins < o.price!}
+              title={locked ? `Comprar por ${o.price} monedas` : undefined}
+              onClick={() => {
+                if (locked && !buy(String(o.value), o.price!)) return;
+                audio.ui();
+                props.onChange(o.value);
+              }}
+            >
+              {o.color && <i className="dot" style={{ background: o.color }} />}
+              {o.label}
+              {locked && ` · 🪙${o.price}`}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -44,6 +57,7 @@ export function SetupPanel() {
   const s = useGameStore((st) => st.settings);
   const update = useGameStore((st) => st.updateSettings);
   const setScreen = useGameStore((st) => st.setScreen);
+  const coins = useGameStore((st) => st.coins);
   const set = <K extends keyof Settings>(k: K) => (v: Settings[K]) => update({ [k]: v } as Partial<Settings>);
 
   let content: ReactNode;
@@ -82,14 +96,14 @@ export function SetupPanel() {
           label="Color"
           value={s.ballColor}
           onChange={set('ballColor')}
-          options={Object.entries(BALL_COLORS).map(([id, c]) => ({ value: id, label: c.label, color: `radial-gradient(circle at 35% 30%, ${c.swirl}, ${c.base})` }))}
+          options={Object.entries(BALL_COLORS).map(([id, c]) => ({ value: id, label: c.label, price: c.price, color: `radial-gradient(circle at 35% 30%, ${c.swirl}, ${c.base})` }))}
         />
       </>
     );
   } else if (tab === 'pista') {
     content = (
       <>
-        <Options label="Madera" value={s.wood} onChange={set('wood')} options={[{ value: 'clara', label: 'Arce clara' }, { value: 'oscura', label: 'Nogal oscura' }]} />
+        <Options label="Madera" value={s.wood} onChange={set('wood')} options={Object.entries(WOODS).map(([id, w]) => ({ value: id, label: w.label, price: w.price, color: `rgb(${w.base.join(',')})` }))} />
         <Options label="Público" value={s.crowd} onChange={set('crowd')} options={[{ value: true, label: 'Con público' }, { value: false, label: 'Sin público' }]} />
       </>
     );
@@ -107,6 +121,7 @@ export function SetupPanel() {
       <div className="panel setup-panel">
         <div className="setup-head">
           <h2>Personalizar partida</h2>
+          <span className="summary-chip">🪙 {coins} monedas</span>
         </div>
         <div className="setup-tabs" role="tablist">
           {TABS.map(([id, label]) => (

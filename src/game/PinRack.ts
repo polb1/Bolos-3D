@@ -7,6 +7,9 @@ import { easeInOut } from '../utils/math';
 const RACK_Z = HEAD_PIN_Z - 0.4; // centre of the triangle
 const PARKED_Y = 1.9; // machinery rests out of sight behind the masking unit
 const GUARD_Y = 0.1; // sweep bar down on the deck
+// The bar rests inside the dark cavity behind the masking unit (front face at PIT_Z - 0.35, bottom edge y 0.94).
+const BAR_PARK_Z = PIT_Z - 0.6;
+const BAR_PARK_Y = 1.05;
 const GUARD_Z = HEAD_PIN_Z + 0.42; // in front of the head pin
 const SWEEP_END_Z = PIT_Z - 0.15;
 const GRIP_Y = PIN.height + 0.03; // table height when its cups hold the pin heads
@@ -61,8 +64,8 @@ export class PinRack {
     bar.position.y = 0.065;
     bar.castShadow = true;
     for (const s of [-1, 1]) {
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.9, 0.03), metal);
-      arm.position.set((s * width) / 2, 0.55, 0);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.7, 0.03), metal);
+      arm.position.set((s * width) / 2, 0.4, 0); // short enough to pass under the masking unit
       this.sweepBar.add(arm);
     }
     this.sweepBar.add(bar);
@@ -89,7 +92,8 @@ export class PinRack {
   }
 
   private park() {
-    this.sweepBar.position.set(0, PARKED_Y, GUARD_Z);
+    this.sweepBar.position.set(0, BAR_PARK_Y, BAR_PARK_Z);
+    this.sweepBar.visible = false;
     this.table.position.y = PARKED_Y;
   }
 
@@ -149,8 +153,9 @@ export class PinRack {
         },
       });
 
-    // 1. Guard drops in front of the pins.
-    s.push({ d: 0.45, tick: (k) => (this.sweepBar.position.y = lerp(PARKED_Y, GUARD_Y, k)) });
+    // 1. Guard lowers inside the cavity, then slides out under the masking unit in front of the pins.
+    s.push({ d: 0.35, start: () => (this.sweepBar.visible = true), tick: (k) => (this.sweepBar.position.y = lerp(BAR_PARK_Y, GUARD_Y, k)) });
+    s.push({ d: 0.5, tick: (k) => (this.sweepBar.position.z = lerp(BAR_PARK_Z, GUARD_Z, k)) });
     // 2. Table comes down, grips the standing pins and lifts them clear.
     if (this.held.length) {
       tableTo(GRIP_Y, 0.55, false);
@@ -186,7 +191,8 @@ export class PinRack {
     }
     if (this.held.length) tableTo(PARKED_Y, 0.6, false);
     // 5. Guard lifts: the lane is ready.
-    s.push({ d: 0.4, tick: (k) => (this.sweepBar.position.y = lerp(GUARD_Y, PARKED_Y, k)) });
+    s.push({ d: 0.45, tick: (k) => (this.sweepBar.position.z = lerp(GUARD_Z, BAR_PARK_Z, k)) });
+    s.push({ d: 0.3, tick: (k) => (this.sweepBar.position.y = lerp(GUARD_Y, BAR_PARK_Y, k)) });
 
     this.steps = s;
     this.step = 0;
