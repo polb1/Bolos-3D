@@ -12,6 +12,7 @@ import { useGameStore } from '../store/useGameStore';
 import { clamp, damp } from '../utils/math';
 import { createRng, gaussian } from '../utils/random';
 import { Input } from './Input';
+import { aiThrow, LADDER } from './ai';
 import { describeRoll, nextPlayer } from './match';
 import { PinRack } from './PinRack';
 import { SwingTracker } from './SwingTracker';
@@ -23,6 +24,7 @@ const MIN_THROW = 1.2; // m/s forward below which the ball is just put down agai
 const MAX_ANGLE = 0.06; // rad: wilder strokes are clamped (they would be gutter balls anyway)
 const ARM_GAIN = 1.2; // the mouse stroke is shorter than a real arm swing: boost its speed a bit
 const AIM_DAMP = 0.85; // sideways jitter of the mouse is larger than a bowler's: soften the angle
+const AI_THINK = 1.4; // s the computer bowler lines up before throwing
 const SPIN_RATE = 0.9; // wrist preset change per second while Q/E is held
 
 type Mode = 'idle' | 'aim' | 'grab' | 'rolling' | 'settling' | 'result' | 'sweep';
@@ -170,7 +172,7 @@ export class Game {
       this.skipClip();
       return false;
     }
-    if (this.mode !== 'aim' || this.paused || useGameStore.getState().screen !== 'playing') return false;
+    if (this.mode !== 'aim' || this.paused || useGameStore.getState().screen !== 'playing' || this.aiTurn()) return false;
     const p = this.floorPoint(clientX, clientY);
     if (!p || Math.hypot(p.x - this.held.x, p.z - this.held.z) > 0.5) return false;
     this.grabOffset.copy(this.held).sub(p);
@@ -218,6 +220,24 @@ export class Game {
     const angle = clamp(r.angle * AIM_DAMP, -MAX_ANGLE, MAX_ANGLE) + gaussian(g, 0.003);
     const speed = clamp(r.speed * ARM_GAIN * (1 + gaussian(g, 0.025)), BALL.minSpeed * 0.6, BALL.maxSpeed * 1.1);
     const spin = clamp(st.aim.spin + r.curve * 1.6 + gaussian(g, 0.08), -1.2, 1.2);
+    this.launch(angle, speed, spin);
+  }
+
+  private aiTurn() {
+    const st = useGameStore.getState();
+    return st.players[st.current]?.ai !== undefined;
+  }
+
+  /** The computer bowler throws: it only picks a line, the physics does the rest. */
+  private aiRelease() {
+    const st = useGameStore.getState();
+    const t = aiThrow(this.physics.standingPins(), LADDER[st.players[st.current].ai!], this.rng);
+    this.held.set(t.x, BALL.radius, LINE_Z);
+    this.launch(t.angle, t.speed, t.spin);
+  }
+
+  private launch(angle: number, speed: number, spin: number) {
+    const st = useGameStore.getState();
     st.setLastThrow({ kmh: speed * 3.6, angleDeg: (angle * 180) / Math.PI, spin });
     this.restX = this.held.x;
     this.physics.resetTilt();
@@ -391,6 +411,7 @@ export class Game {
     if (this.mode === 'aim' || this.mode === 'grab') {
       this.input.poll();
       if (this.input.spinHeld) this.nudgeSpin(this.input.spinHeld * SPIN_RATE * dt);
+      if (this.mode === 'aim' && this.aiTurn() && this.modeTime > AI_THINK) this.aiRelease();
     }
 
     if (this.mode === 'rolling' || this.mode === 'settling') {

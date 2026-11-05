@@ -14,6 +14,14 @@ export function MainMenu() {
     audio.unlock();
     audio.ui();
     updateSettings({ players });
+    useGameStore.getState().setLadder(null);
+    gameRef.current?.startMatch();
+  };
+
+  const tournament = () => {
+    audio.unlock();
+    audio.ui();
+    useGameStore.getState().setLadder(0);
     gameRef.current?.startMatch();
   };
 
@@ -31,6 +39,9 @@ export function MainMenu() {
         <div className="menu-buttons">
           <button className="btn primary xl" onClick={() => play(1)} autoFocus>
             ▶ Partida individual
+          </button>
+          <button className="btn menu" onClick={tournament}>
+            🏆 Torneo vs IA · stepladder
           </button>
           <button className="btn menu" onClick={() => play(2)}>
             Duelo local · 2 jugadores

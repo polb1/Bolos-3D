@@ -3,6 +3,8 @@ import { FRAMES, isGameOver, PINS, turnState, type Roll } from '../scoring/scori
 export interface PlayerGame {
   name: string;
   rolls: Roll[];
+  /** Index into LADDER when this bowler is the computer. */
+  ai?: number;
 }
 
 /** Players alternate frame by frame; returns who throws next (-1 when the match is over). */

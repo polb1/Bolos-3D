@@ -1,3 +1,4 @@
+import { LADDER } from '../game/ai';
 import { gameRef } from '../game/instance';
 import { currentScore, gameStats } from '../scoring/scoring';
 import { useGameStore } from '../store/useGameStore';
@@ -8,6 +9,9 @@ export function EndPanel() {
   const newRecord = useGameStore((s) => s.newRecord);
   const earned = useGameStore((s) => s.earned);
   const coins = useGameStore((s) => s.coins);
+  const ladder = useGameStore((s) => s.ladder);
+  const ladderResult = useGameStore((s) => s.ladderResult);
+  const next = (round: number) => (useGameStore.getState().setLadder(round), gameRef.current?.startMatch());
   const scores = players.map((p) => currentScore(p.rolls));
   const best = Math.max(...scores);
   const winner = scores.indexOf(best);
@@ -16,6 +20,10 @@ export function EndPanel() {
   if (best === 300) title = '¡PARTIDA PERFECTA!';
   else if (players.length > 1) title = scores.every((s) => s === best) ? '¡Empate!' : `¡Gana ${players[winner].name}!`;
   else if (best >= 200) title = '¡Partidón!';
+
+  if (ladderResult === 'champion') title = '🏆 ¡CAMPEÓN DEL TORNEO!';
+  else if (ladderResult === 'win') title = `¡Eliminas a ${players[1].name}!`;
+  else if (ladderResult === 'lose') title = `Eliminado por ${players[1].name}`;
 
   const stats = gameStats(players[winner].rolls);
   return (
@@ -36,9 +44,29 @@ export function EndPanel() {
             <ScoreSheet key={i} player={p} active={false} />
           ))}
         </div>
-        <button className="btn primary" onClick={() => gameRef.current?.startMatch()} autoFocus>
-          Jugar otra vez
-        </button>
+        {ladder !== null && (
+          <p className="stats-line">
+            {LADDER.map((r, i) => (
+              <span key={i} className="summary-chip" style={{ opacity: i < ladder || (i === ladder && ladderResult !== 'lose') ? 0.5 : 1 }}>
+                #{3 - i} {r.name} · media {r.average}
+                {i < ladder || (i === ladder && ladderResult !== 'lose') ? ' ✓' : ''}
+              </span>
+            ))}
+          </p>
+        )}
+        {ladderResult === 'win' ? (
+          <button className="btn primary" onClick={() => next(ladder! + 1)} autoFocus>
+            Siguiente ronda: vs {LADDER[ladder! + 1].name}
+          </button>
+        ) : ladder !== null ? (
+          <button className="btn primary" onClick={() => next(0)} autoFocus>
+            Nuevo torneo
+          </button>
+        ) : (
+          <button className="btn primary" onClick={() => gameRef.current?.startMatch()} autoFocus>
+            Jugar otra vez
+          </button>
+        )}
         <button className="btn ghost" onClick={() => gameRef.current?.quitToMenu()}>
           Menú principal
         </button>

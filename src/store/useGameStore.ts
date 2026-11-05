@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { COIN_REWARD, COIN_THRESHOLD, DEFAULT_SETTINGS, type Settings } from '../config/settings';
+import { LADDER } from '../game/ai';
 import type { PlayerGame } from '../game/match';
 import { currentScore, gameStats, type Roll } from '../scoring/scoring';
 import { storage } from '../utils/storage';
@@ -54,6 +55,9 @@ interface State {
   owned: string[];
   /** Coins won in the match that just ended. */
   earned: number;
+  /** Stepladder round against the AI (0 = vs #3 seed … 2 = final), null outside the tournament. */
+  ladder: number | null;
+  ladderResult: 'win' | 'lose' | 'champion' | null;
 
   setScreen(s: Screen): void;
   setLoadError(e: string): void;
@@ -72,9 +76,12 @@ interface State {
   finishMatch(): void;
   /** Spends coins on a shop item; false if already owned or unaffordable. */
   buy(id: string, price: number): boolean;
+  setLadder(round: number | null): void;
 }
 
 let bannerId = 0;
+const LADDER_WIN_COINS = 15;
+const LADDER_TITLE_COINS = 60;
 
 export const useGameStore = create<State>((set, get) => ({
   screen: 'loading',
@@ -94,6 +101,8 @@ export const useGameStore = create<State>((set, get) => ({
   coins: storage.getRaw('coins', 0),
   owned: storage.getRaw<string[]>('owned', []),
   earned: 0,
+  ladder: null,
+  ladderResult: null,
 
   setScreen: (screen) => set({ screen }),
   setLoadError: (loadError) => set({ loadError }),
@@ -108,12 +117,15 @@ export const useGameStore = create<State>((set, get) => ({
     set({ muted });
   },
   newMatch: () => {
-    const { settings } = get();
-    const players = settings.names.slice(0, settings.players).map((name, i) => ({
-      name: name.trim() || `Jugador ${i + 1}`,
-      rolls: [],
-    }));
-    set({ players, current: 0, phase: 'aim', lastThrow: null, banner: null, cine: false, tv: false, newRecord: false, aim: { spin: 0 } });
+    const { settings, ladder } = get();
+    const players: PlayerGame[] =
+      ladder === null
+        ? settings.names.slice(0, settings.players).map((name, i) => ({ name: name.trim() || `Jugador ${i + 1}`, rolls: [] }))
+        : [
+            { name: settings.names[0].trim() || 'Jugador 1', rolls: [] },
+            { name: LADDER[ladder].name, rolls: [], ai: ladder },
+          ];
+    set({ ladderResult: null,  players, current: 0, phase: 'aim', lastThrow: null, banner: null, cine: false, tv: false, newRecord: false, aim: { spin: 0 } });
   },
   addRoll: (player, roll) =>
     set({ players: get().players.map((p, i) => (i === player ? { ...p, rolls: [...p.rolls, roll] } : p)) }),
@@ -127,7 +139,7 @@ export const useGameStore = create<State>((set, get) => ({
   setTv: (tv) => set({ tv }),
   finishMatch: () => {
     const { players, stats } = get();
-    const best = Math.max(...players.map((p) => currentScore(p.rolls)));
+    const best = Math.max(...players.filter((p) => p.ai === undefined).map((p) => currentScore(p.rolls)));
     const totals = players.reduce(
       (acc, p) => {
         const s = gameStats(p.rolls);
@@ -142,11 +154,21 @@ export const useGameStore = create<State>((set, get) => ({
       spares: stats.spares + totals.spares,
     };
     storage.set('stats', next);
-    const earned = players.filter((p) => currentScore(p.rolls) > COIN_THRESHOLD).length * COIN_REWARD;
+    const humans = players.filter((p) => p.ai === undefined);
+    let earned = humans.filter((p) => currentScore(p.rolls) > COIN_THRESHOLD).length * COIN_REWARD;
+    const { ladder } = get();
+    let ladderResult: State['ladderResult'] = null;
+    if (ladder !== null) {
+      // shortcut: a tie goes to the higher seed instead of a 9th-10th frame roll-off.
+      const won = currentScore(players[0].rolls) > currentScore(players[1].rolls);
+      ladderResult = !won ? 'lose' : ladder === LADDER.length - 1 ? 'champion' : 'win';
+      earned += ladderResult === 'champion' ? LADDER_TITLE_COINS : won ? LADDER_WIN_COINS : 0;
+    }
     const coins = get().coins + earned;
     storage.set('coins', coins);
-    set({ stats: next, newRecord: best > stats.best && best > 0, screen: 'end', cine: false, coins, earned });
+    set({ stats: next, newRecord: best > stats.best && best > 0, screen: 'end', cine: false, coins, earned, ladderResult });
   },
+  setLadder: (ladder) => set({ ladder }),
   buy: (id, price) => {
     const { coins, owned } = get();
     if (owned.includes(id) || coins < price) return false;

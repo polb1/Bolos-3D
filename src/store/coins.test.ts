@@ -13,3 +13,17 @@ describe('coins and shop', () => {
     expect(s.getState().buy('cerezo', 20)).toBe(false);
   });
 });
+
+describe('stepladder vs AI', () => {
+  it('a win advances, the final crowns, and a tie goes to the AI', () => {
+    const s = useGameStore;
+    const game = (me: number, ai: number, round: number) => {
+      s.setState({ ladder: round, coins: 0, players: [{ name: 'Yo', rolls: Array(20).fill({ pins: me }) }, { name: 'IA', rolls: Array(20).fill({ pins: ai }), ai: round }] });
+      s.getState().finishMatch();
+      return s.getState();
+    };
+    expect(game(4, 3, 0)).toMatchObject({ ladderResult: 'win', coins: 15 });
+    expect(game(4, 3, 2)).toMatchObject({ ladderResult: 'champion', coins: 60 });
+    expect(game(3, 3, 1)).toMatchObject({ ladderResult: 'lose', coins: 0 });
+  });
+});
