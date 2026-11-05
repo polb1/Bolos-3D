@@ -154,7 +154,7 @@ export class Game {
   }
 
   nudgeSpin(delta: number) {
-    if (this.mode !== 'aim' && this.mode !== 'grab') return;
+    if ((this.mode !== 'aim' && this.mode !== 'grab') || this.aiTurn()) return;
     const aim = useGameStore.getState().aim;
     useGameStore.getState().setAim({ spin: clamp(aim.spin + delta, -1, 1) });
   }
