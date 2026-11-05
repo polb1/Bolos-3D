@@ -27,3 +27,12 @@ describe('stepladder vs AI', () => {
     expect(game(3, 3, 1)).toMatchObject({ ladderResult: 'lose', coins: 0 });
   });
 });
+
+describe('personal stats', () => {
+  it("do not count the AI's strikes", () => {
+    const s = useGameStore;
+    s.setState({ ladder: 0, stats: { games: 0, best: 0, strikes: 0, spares: 0 }, players: [{ name: 'Yo', rolls: Array(20).fill({ pins: 1 }) }, { name: 'IA', rolls: Array(12).fill({ pins: 10 }), ai: 0 }] });
+    s.getState().finishMatch();
+    expect(s.getState().stats).toMatchObject({ games: 1, best: 20, strikes: 0 });
+  });
+});

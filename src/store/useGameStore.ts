@@ -139,8 +139,10 @@ export const useGameStore = create<State>((set, get) => ({
   setTv: (tv) => set({ tv }),
   finishMatch: () => {
     const { players, stats } = get();
-    const best = Math.max(...players.filter((p) => p.ai === undefined).map((p) => currentScore(p.rolls)));
-    const totals = players.reduce(
+    const humanPlayers = players.filter((p) => p.ai === undefined);
+    const best = Math.max(...humanPlayers.map((p) => currentScore(p.rolls)));
+    // The AI's strikes and spares are not the player's: personal stats count humans only.
+    const totals = humanPlayers.reduce(
       (acc, p) => {
         const s = gameStats(p.rolls);
         return { strikes: acc.strikes + s.strikes, spares: acc.spares + s.spares };
@@ -154,8 +156,7 @@ export const useGameStore = create<State>((set, get) => ({
       spares: stats.spares + totals.spares,
     };
     storage.set('stats', next);
-    const humans = players.filter((p) => p.ai === undefined);
-    let earned = humans.filter((p) => currentScore(p.rolls) > COIN_THRESHOLD).length * COIN_REWARD;
+    let earned = humanPlayers.filter((p) => currentScore(p.rolls) > COIN_THRESHOLD).length * COIN_REWARD;
     const { ladder } = get();
     let ladderResult: State['ladderResult'] = null;
     if (ladder !== null) {
