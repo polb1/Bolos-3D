@@ -67,6 +67,8 @@ export class Game {
   private slowTime = 0;
   private restTime = 0;
   private strikeStreak: number[] = [];
+  /** One-ball roll-off after a tied game against the AI: pins per player this round. */
+  private rolloff: number[] | null = null;
   private camTarget = new THREE.Vector3(0, 0.3, -12);
   private camLook = new THREE.Vector3(0, 0.3, -12);
   private raf = 0;
@@ -137,6 +139,7 @@ export class Game {
     const st = useGameStore.getState();
     this.monitor.stop();
     st.newMatch();
+    this.rolloff = null;
     this.strikeStreak = st.players.map(() => 0);
     this.physics.setVariation(this.rng); // every match is played on a slightly different lane
     this.rack.reset();
@@ -334,6 +337,15 @@ export class Game {
   private scoreRoll(foul: boolean) {
     const st = useGameStore.getState();
     const player = st.current;
+    if (this.rolloff) {
+      const knocked = foul ? 0 : this.standingBefore.length - this.physics.standingPins().length;
+      this.rolloff.push(knocked);
+      st.setCine(false);
+      this.lastFoul = false;
+      st.showBanner({ title: `${knocked} ${knocked === 1 ? 'bolo' : 'bolos'}`, sub: `Desempate · ${st.players[player].name}`, kind: knocked === 10 ? 'strike' : 'count' });
+      this.resultWait = 1.7;
+      return;
+    }
     const before = st.players[player].rolls;
     const state = turnState(before);
     const standingAfter = this.physics.standingPins();
@@ -382,6 +394,18 @@ export class Game {
     const prevPlayer = st.current;
     const next = nextPlayer(st.players);
     if (next === -1) {
+      const tieBreak = this.rollOffStep();
+      if (tieBreak === 'done') return;
+      if (tieBreak !== null) {
+        // Roll-off continues: next bowler gets a full rack.
+        this.mode = 'sweep';
+        audio.sweep();
+        this.rack.cycle(true, () => {
+          st.setCurrent(tieBreak);
+          this.beginAim();
+        });
+        return;
+      }
       this.mode = 'idle';
       st.finishMatch();
       return;
@@ -395,6 +419,29 @@ export class Game {
       st.setCurrent(next);
       this.beginAim();
     });
+  }
+
+  /**
+   * Tied game against the AI → one ball each at a full rack, repeated while tied.
+   * Returns who bowls next in the roll-off, 'done' once it is decided, or null if there is none.
+   */
+  private rollOffStep(): number | 'done' | null {
+    const st = useGameStore.getState();
+    const [a, b] = st.players.map((p) => currentScore(p.rolls));
+    if (st.ladder === null || st.players.length !== 2 || a !== b) return null;
+    if (!this.rolloff || this.rolloff.length === 2) {
+      if (this.rolloff && this.rolloff[0] !== this.rolloff[1]) {
+        const winner = this.rolloff[0] > this.rolloff[1] ? 0 : 1;
+        this.rolloff = null;
+        this.mode = 'idle';
+        st.finishMatch(winner);
+        return 'done';
+      }
+      if (!this.rolloff) st.showBanner({ title: '¡EMPATE!', sub: 'Desempate: una bola cada uno, gana quien tire más bolos', kind: 'split' });
+      this.rolloff = [];
+      return 0;
+    }
+    return 1;
   }
 
   // ------------------------------------------------------------------ loop

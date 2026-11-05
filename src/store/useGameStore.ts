@@ -73,7 +73,8 @@ interface State {
   clearBanner(): void;
   setCine(on: boolean): void;
   setTv(on: boolean): void;
-  finishMatch(): void;
+  /** `tiebreak` = index of the player who won a roll-off after a tied game. */
+  finishMatch(tiebreak?: number): void;
   /** Spends coins on a shop item; false if already owned or unaffordable. */
   buy(id: string, price: number): boolean;
   setLadder(round: number | null): void;
@@ -137,7 +138,7 @@ export const useGameStore = create<State>((set, get) => ({
   clearBanner: () => set({ banner: null }),
   setCine: (cine) => set({ cine }),
   setTv: (tv) => set({ tv }),
-  finishMatch: () => {
+  finishMatch: (tiebreak) => {
     const { players, stats } = get();
     const humanPlayers = players.filter((p) => p.ai === undefined);
     const best = Math.max(...humanPlayers.map((p) => currentScore(p.rolls)));
@@ -160,8 +161,9 @@ export const useGameStore = create<State>((set, get) => ({
     const { ladder } = get();
     let ladderResult: State['ladderResult'] = null;
     if (ladder !== null) {
-      // shortcut: a tie goes to the higher seed instead of a 9th-10th frame roll-off.
-      const won = currentScore(players[0].rolls) > currentScore(players[1].rolls);
+      const [me, ai] = [currentScore(players[0].rolls), currentScore(players[1].rolls)];
+      // A tied game is settled by a one-ball roll-off (played by Game).
+      const won = me > ai || (me === ai && tiebreak === 0);
       ladderResult = !won ? 'lose' : ladder === LADDER.length - 1 ? 'champion' : 'win';
       earned += ladderResult === 'champion' ? LADDER_TITLE_COINS : won ? LADDER_WIN_COINS : 0;
     }

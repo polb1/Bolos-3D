@@ -29,7 +29,7 @@ export function App() {
         if (cancelled || !stageRef.current || !worldStageRef.current || gameRef.current) return;
         gameRef.current = new Game(stageRef.current);
         worldRef.current = new World(worldStageRef.current);
-        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current }); // for browser testing
+        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current, __stores: { game: useGameStore, world: useWorldStore } }); // for browser testing
         st.setScreen('menu');
         useWorldStore.getState().setScreen('title');
       } catch (e) {
