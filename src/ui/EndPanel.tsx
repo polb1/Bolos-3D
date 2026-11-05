@@ -32,6 +32,7 @@ export function EndPanel() {
       <div className="panel end-panel">
         <h2>{title}</h2>
         {newRecord && <div className="end-record">★ NUEVO RÉCORD ★</div>}
+        {ladder !== null && scores[0] === scores[1] && <p className="stats-line">Empate a {scores[0]} · decidido en la bola de desempate</p>}
         <div className="end-score">{best}</div>
         <p className="stats-line">
           {earned ? `+${earned} 🪙 ganadas` : 'Supera 100 puntos para ganar monedas'} · tienes {coins} 🪙
