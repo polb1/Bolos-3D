@@ -28,6 +28,7 @@ function Title() {
   const coins = useGameStore((s) => s.coins);
   const name = useWorldStore((s) => s.name);
   const setName = useWorldStore((s) => s.setName);
+  const style = useWorldStore((s) => s.style);
   return (
     <div className="screen world-title">
       <div className="menu-hero">
@@ -63,8 +64,11 @@ function Title() {
           <button className="btn menu" onClick={click(() => setScreen('stats'))}>
             Estadísticas
           </button>
+          <button className="btn ghost" onClick={click(() => useWorldStore.getState().setStyle(style === '3d' ? 'pixel' : '3d'))}>
+            Cambiar a local {style === '3d' ? 'pixel art' : '3D'}
+          </button>
         </div>
-        <p className="credits-line">Local en pixel art · juegos en 3D con física Rapier</p>
+        <p className="credits-line">Local {style === '3d' ? 'en 3D' : 'en pixel art'} · juegos en 3D con física Rapier</p>
       </div>
     </div>
   );
@@ -96,6 +100,7 @@ function ControlsList() {
     <div className="controls-table">
       <p><b>W A S D</b> o flechas moverse · <b>Shift</b> correr</p>
       <p><b>E</b> interactuar · <b>ESC</b> menú</p>
+      <p>Local 3D: <b>ratón</b> o arrastrar para mirar · <b>rueda</b> acercar</p>
       <p>Dentro de cada juego, los controles son los suyos (3D)</p>
       <p className="mobile-only">Móvil: joystick para moverte y toca el aviso ▶ para jugar</p>
     </div>

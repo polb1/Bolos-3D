@@ -31,7 +31,7 @@ export function App() {
       try {
         const [{ Game }, { World }, { AirHockey }] = await Promise.all([
           import('../game/Game'),
-          import('../world/World'),
+          useWorldStore.getState().style === 'pixel' ? import('../world/World') : import('../world3d/World'),
           import('../games/airhockey/AirHockey'),
           initRapier(),
         ]);

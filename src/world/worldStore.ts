@@ -3,6 +3,8 @@ import { storage } from '../utils/storage';
 
 /** Which layer is live: the arcade hall or one of its activities. */
 export type Place = 'world' | 'bowling' | 'airhockey';
+/** How the hall is drawn: 3D third person (default) or the top-down pixel-art map. */
+export type HallStyle = '3d' | 'pixel';
 export type WorldScreen = 'loading' | 'title' | 'character' | 'controls' | 'stats' | 'explore' | 'paused';
 
 export interface Outfit {
@@ -30,6 +32,9 @@ interface WorldState {
   outfit: number;
   /** Name shown to other players online. */
   name: string;
+  style: HallStyle;
+  /** Saves the choice and reloads: each hall builds its own renderer at start-up. */
+  setStyle(s: HallStyle): void;
   setName(n: string): void;
   setScreen(s: WorldScreen): void;
   setPlace(p: Place): void;
@@ -49,6 +54,11 @@ export const useWorldStore = create<WorldState>((set) => ({
   toast: null,
   outfit: storage.getRaw('outfit', 0),
   name: storage.getRaw('name', ''),
+  style: storage.getRaw<HallStyle>('hallStyle', '3d') === 'pixel' ? 'pixel' : '3d',
+  setStyle: (style) => {
+    storage.set('hallStyle', style);
+    location.reload();
+  },
   setName: (name) => {
     storage.set('name', name);
     set({ name });

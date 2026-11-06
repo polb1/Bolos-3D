@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useWorldStore } from '../world/worldStore';
 import { cleanRoom, parseServer, type ClientMsg, type NetPlace, type Peer, type PeerPos } from './protocol';
 
 export type NetStatus = 'off' | 'connecting' | 'online' | 'offline' | 'full';
@@ -24,7 +25,9 @@ function serverUrl(room: string) {
   // dev: Vite on 5173, room on 8787; production: server.ts serves both from the same domain
   const host = import.meta.env.DEV ? `${location.hostname || 'localhost'}:8787` : location.host;
   const base = import.meta.env.VITE_SERVER_URL || `${ws}://${host}`;
-  return `${base}/?sala=${encodeURIComponent(room)}`;
+  // The two hall styles use different maps, so each style gets its own copy of the room.
+  const style = useWorldStore.getState().style === 'pixel' ? '-pixel' : '';
+  return `${base}/?sala=${encodeURIComponent(room + style)}`;
 }
 
 /**
@@ -118,7 +121,7 @@ class NetClient {
         this.id = m.id;
         this.peers.clear();
         for (const p of m.peers) this.peers.set(p.id, { ...p, tx: p.x, ty: p.y, anim: 0 });
-        useNetStore.setState({ status: 'online', room: m.room });
+        useNetStore.setState({ status: 'online', room: m.room.replace(/-pixel$/, '') });
         this.names();
         break;
       case 'join':

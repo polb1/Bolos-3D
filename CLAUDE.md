@@ -9,7 +9,7 @@ Reconstrucción inspirada en https://padel-mto1.onrender.com/ (simulador de pád
 Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo dentro de la clase `Game` + Rapier (`@dimforge/rapier3d-compat`) + Web Audio sintetizado (sin archivos de audio) + Vitest.
 
 ## Virtual Arcade (local en pixel art)
-El juego arranca en un centro recreativo 2D visto desde arriba, en pixel art y por salas (decisión del usuario); los juegos son 3D. Decisiones y etapas en `ARCHITECTURE.md`.
+El juego arranca en un centro recreativo 3D en tercera persona (`src/world3d/`, por defecto) o, eligiéndolo en la portada, en el mapa 2D pixel art por salas (`src/world/`); los juegos son 3D. Cada estilo usa su propia copia de la sala online (sufijo `-pixel`). Decisiones y etapas en `ARCHITECTURE.md`.
 - `world/`: `World` (canvas 2D con zoom entero, bucle, movimiento, cámara, salas atenuadas, entrada/salida de actividades), `map` (salas, puertas, muebles), `sprites` (todo dibujado por código píxel a píxel), `collide` (círculo contra cajas), `activities` (registro en casillas), `worldStore`.
 - Solo se dibuja la capa activa (`useWorldStore.place`): `#world-stage` o `#stage` (bolos 3D). Al volver, el personaje sigue donde estaba.
 - **Air hockey** (`src/games/airhockey/`, diseño en `AIR_HOCKEY_DESIGN.md`): física 2D propia y sin gráficos con tests, IA por niveles, modos contra la IA, dos jugadores y entrenamiento. Interfaz en `src/ui/airhockey/`; `window.__hockey.frame(dt)` para probarlo.
