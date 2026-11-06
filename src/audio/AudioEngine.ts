@@ -10,6 +10,7 @@ export class AudioEngine {
   private rollFilter: BiquadFilterNode | null = null;
   private rollSrc: AudioBufferSourceNode | null = null;
   private ambience: GainNode | null = null;
+  private airHum: GainNode | null = null;
   private lastHit = 0;
   private muted = false;
 
@@ -233,6 +234,77 @@ export class AudioEngine {
     o.connect(lp).connect(g).connect(this.master);
     o.start(t);
     o.stop(t + 1.3);
+  }
+
+  // ------------------------------------------------------------------ air hockey
+  /** Plastic clack: mallet on puck is fuller, rail hits thinner. `speed` in m/s. */
+  hockeyHit(kind: 'mallet' | 'rail', speed: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    if (now - this.lastHit < 0.03) return;
+    this.lastHit = now;
+    const level = Math.min(1, speed / 8);
+    if (level < 0.04) return;
+    const src = this.noiseSource();
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = kind === 'mallet' ? 2400 : 3400 + Math.random() * 600;
+    bp.Q.value = 2.2;
+    const g = ctx.createGain();
+    this.env(g, now, 0.8 * level, 0.001, 0.05);
+    src.connect(bp).connect(g).connect(this.master);
+    src.start(now);
+    src.stop(now + 0.1);
+    this.tone(kind === 'mallet' ? 620 : 1100, 'triangle', now, 0.25 * level, 0.05);
+  }
+
+  /** Puck dropping into the goal slot, then the scoring chime. */
+  hockeyGoal(mine: boolean) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.tone(300, 'sine', t, 0.4, 0.25);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.22);
+    const notes = mine ? [523.25, 659.25, 783.99] : [392, 329.63];
+    notes.forEach((f, i) => this.tone(f, 'triangle', t + 0.25 + i * 0.1, 0.2, 0.3));
+    if (mine) this.cheer(0.5);
+  }
+
+  /** Two-tone start buzzer; `end` plays a longer fanfare (win) or a drop (loss). */
+  hockeyBuzzer(kind: 'start' | 'win' | 'lose') {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (kind === 'start') {
+      this.tone(660, 'square', t, 0.06, 0.12);
+      this.tone(880, 'square', t + 0.16, 0.07, 0.25);
+    } else if (kind === 'win') {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.tone(f, 'triangle', t + i * 0.11, 0.22, 0.4));
+      this.cheer(1);
+    } else {
+      [392, 349.23, 293.66].forEach((f, i) => this.tone(f, 'triangle', t + i * 0.16, 0.2, 0.4));
+    }
+  }
+
+  /** Blower hum of the air table. */
+  setAirHum(on: boolean) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    if (on && !this.airHum) {
+      const src = this.noiseSource(true);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 260;
+      this.airHum = ctx.createGain();
+      this.airHum.gain.value = 0;
+      this.airHum.gain.setTargetAtTime(0.05, ctx.currentTime, 0.4);
+      src.connect(lp).connect(this.airHum).connect(this.master);
+      src.start();
+    } else if (!on && this.airHum) {
+      const g = this.airHum;
+      g.gain.setTargetAtTime(0, ctx.currentTime, 0.2);
+      setTimeout(() => g.disconnect(), 1200);
+      this.airHum = null;
+    }
   }
 
   /** Low murmur of a busy bowling alley. */

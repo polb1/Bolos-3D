@@ -1,0 +1,247 @@
+import { useEffect, type ReactNode } from 'react';
+import { audio } from '../../audio/AudioEngine';
+import { hockeyRef } from '../../games/airhockey/instance';
+import type { Mode } from '../../games/airhockey/rules';
+import { useHockeyStore, type HockeySettings } from '../../games/airhockey/store';
+import { worldRef } from '../../world/instance';
+import { MuteButton } from '../MuteButton';
+
+const click = (fn: () => void) => () => {
+  audio.unlock();
+  audio.ui();
+  fn();
+};
+
+const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+
+const MODE_NAMES: Record<Mode, string> = { ai: 'Contra la IA', versus: 'Dos jugadores', training: 'Entrenamiento' };
+
+function Options<T extends string | number>(props: { label: string; value: T; options: Array<{ value: T; label: string }>; onChange(v: T): void }) {
+  return (
+    <div className="opt-group" role="radiogroup" aria-label={props.label}>
+      <span className="lbl">{props.label}</span>
+      <div className="opt-row">
+        {props.options.map((o) => (
+          <button
+            key={String(o.value)}
+            role="radio"
+            aria-checked={o.value === props.value}
+            className={'opt' + (o.value === props.value ? ' selected' : '')}
+            onClick={click(() => props.onChange(o.value))}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="screen">
+      <div className="panel hockey-panel">
+        <h2>{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Menu() {
+  const setScreen = useHockeyStore((s) => s.setScreen);
+  const settings = useHockeyStore((s) => s.settings);
+  const start = (m: Mode) => click(() => hockeyRef.current?.start(m));
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.code === 'Escape' && worldRef.current?.leave();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const diff = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil' }[settings.difficulty];
+  return (
+    <div className="screen">
+      <div className="menu-hero">
+        <div className="menu-topbar">
+          <span />
+          <MuteButton />
+        </div>
+        <h1 className="game-title big">
+          AIR <span>HOCKEY</span>
+        </h1>
+        <p className="menu-tagline">
+          A {settings.target} goles · IA {diff}
+        </p>
+        <div className="menu-buttons">
+          <button className="btn primary xl" onClick={start('ai')} autoFocus>
+            ▶ Jugar
+          </button>
+          <button className="btn menu" onClick={start('training')}>
+            Entrenamiento
+          </button>
+          <button className="btn menu" onClick={start('versus')}>
+            Dos jugadores
+          </button>
+          <button className="btn menu" onClick={click(() => setScreen('settings'))}>
+            Configuración
+          </button>
+          <button className="btn menu" onClick={click(() => setScreen('controls'))}>
+            Controles
+          </button>
+          <button className="btn ghost" onClick={click(() => worldRef.current?.leave())}>
+            ← Volver al local (ESC)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Settings() {
+  const s = useHockeyStore((st) => st.settings);
+  const update = useHockeyStore((st) => st.updateSettings);
+  const setScreen = useHockeyStore((st) => st.setScreen);
+  const set = <K extends keyof HockeySettings>(k: K) => (v: HockeySettings[K]) => update({ [k]: v } as Partial<HockeySettings>);
+  return (
+    <Panel title="Configuración">
+      <div className="hockey-opts">
+        <Options label="Goles" value={s.target} onChange={set('target')} options={[3, 5, 7, 10].map((n) => ({ value: n, label: String(n) }))} />
+        <Options
+          label="IA"
+          value={s.difficulty}
+          onChange={set('difficulty')}
+          options={[
+            { value: 'easy', label: 'Fácil' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'hard', label: 'Difícil' },
+          ]}
+        />
+        <Options
+          label="Disco"
+          value={s.puckSpeed}
+          onChange={set('puckSpeed')}
+          options={[
+            { value: 'slow', label: 'Lento' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'fast', label: 'Rápido' },
+          ]}
+        />
+        <Options
+          label="Sensibilidad"
+          value={s.sensitivity}
+          onChange={set('sensitivity')}
+          options={[0.6, 0.8, 1, 1.25, 1.5].map((n) => ({ value: n, label: `×${n}` }))}
+        />
+      </div>
+      <button className="btn primary" onClick={click(() => setScreen('menu'))}>
+        Listo
+      </button>
+    </Panel>
+  );
+}
+
+function Controls() {
+  const setScreen = useHockeyStore((s) => s.setScreen);
+  return (
+    <Panel title="Controles">
+      <ul className="hockey-help">
+        <li><b>Ratón</b>: tu mazo sigue al cursor sobre la mesa.</li>
+        <li><b>WASD / flechas</b>: alternativa con teclado.</li>
+        <li><b>Móvil</b>: desliza el dedo por tu mitad.</li>
+        <li><b>Dos jugadores</b>: J1 con WASD (izquierda), J2 con flechas (derecha). En pantalla táctil, cada uno con su dedo en su mitad.</li>
+        <li><b>ESC</b>: pausa.</li>
+        <li>No puedes cruzar la línea central. Gol cuando el disco entra entero en la ranura; saca quien lo recibe.</li>
+      </ul>
+      <button className="btn primary" onClick={click(() => setScreen('menu'))}>
+        Volver
+      </button>
+    </Panel>
+  );
+}
+
+function Hud() {
+  const score = useHockeyStore((s) => s.score);
+  const mode = useHockeyStore((s) => s.mode);
+  const time = useHockeyStore((s) => s.time);
+  const lastGoal = useHockeyStore((s) => s.lastGoal);
+  const names = mode === 'versus' ? ['J1', 'J2'] : ['TÚ', 'IA'];
+  return (
+    <>
+      <div className="hockey-hud">
+        {mode === 'training' ? (
+          <span className="hh-score">Goles <b className="p1">{score.p1}</b></span>
+        ) : (
+          <span className="hh-score">
+            <span className="p1">{names[0]} {score.p1}</span>
+            <span className="sep">–</span>
+            <span className="p2">{score.p2} {names[1]}</span>
+          </span>
+        )}
+        <span className="hh-time">{clock(time)}</span>
+      </div>
+      <div className="hud-corner right">
+        <button className="icon-btn" aria-label="Reiniciar" title="Reiniciar" onClick={click(() => hockeyRef.current?.restart())}>↺</button>
+        <button className="icon-btn" aria-label="Pausa" title="Pausa (ESC)" onClick={click(() => hockeyRef.current?.pause())}>❚❚</button>
+      </div>
+      {lastGoal && (
+        <div key={lastGoal.n} className={'hockey-goal ' + (lastGoal.scorer === 1 ? 'p1' : 'p2')}>
+          {mode === 'versus' ? `¡GOL DE J${lastGoal.scorer === 1 ? 1 : 2}!` : lastGoal.scorer === 1 ? '¡GOL!' : 'Gol de la IA'}
+        </div>
+      )}
+    </>
+  );
+}
+
+function Paused() {
+  const setScreen = useHockeyStore((s) => s.setScreen);
+  return (
+    <Panel title="Pausa">
+      <button className="btn primary" onClick={click(() => hockeyRef.current?.resume())} autoFocus>
+        Continuar
+      </button>
+      <button className="btn menu" onClick={click(() => hockeyRef.current?.restart())}>
+        Reiniciar
+      </button>
+      <button className="btn ghost" onClick={click(() => setScreen('menu'))}>
+        Salir al menú
+      </button>
+    </Panel>
+  );
+}
+
+function End() {
+  const { score, mode, time, setScreen } = useHockeyStore();
+  const names = mode === 'versus' ? ['Jugador 1', 'Jugador 2'] : ['Tú', 'IA'];
+  const title = mode === 'versus' ? `¡Gana el ${names[score.winner === 1 ? 0 : 1]}!` : score.winner === 1 ? '¡Has ganado!' : 'Gana la IA';
+  return (
+    <Panel title={title}>
+      <div className="hockey-final">
+        <span className="p1">{names[0]} <b>{score.p1}</b></span>
+        <span className="sep">–</span>
+        <span className="p2"><b>{score.p2}</b> {names[1]}</span>
+      </div>
+      <p className="tagline">
+        {MODE_NAMES[mode]} · a {score.target} goles · {clock(time)}
+      </p>
+      <button className="btn primary" onClick={click(() => hockeyRef.current?.restart())} autoFocus>
+        Volver a jugar
+      </button>
+      <button className="btn ghost" onClick={click(() => setScreen('menu'))}>
+        Menú
+      </button>
+    </Panel>
+  );
+}
+
+export function AirHockeyUI() {
+  const screen = useHockeyStore((s) => s.screen);
+  return (
+    <>
+      {(screen === 'playing' || screen === 'paused') && <Hud />}
+      {screen === 'menu' && <Menu />}
+      {screen === 'settings' && <Settings />}
+      {screen === 'controls' && <Controls />}
+      {screen === 'paused' && <Paused />}
+      {screen === 'end' && <End />}
+    </>
+  );
+}

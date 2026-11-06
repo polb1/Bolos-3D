@@ -1,3 +1,4 @@
+import { useHockeyStore } from '../games/airhockey/store';
 import { audio } from '../audio/AudioEngine';
 import { useGameStore } from '../store/useGameStore';
 import { ACTIVITIES, nearestActivity, type Activity } from './activities';
@@ -107,6 +108,7 @@ export class World {
     window.setTimeout(() => {
       w.setPlace(a.place!);
       if (a.place === 'bowling') useGameStore.getState().setScreen('menu');
+      if (a.place === 'airhockey') useHockeyStore.getState().setScreen('menu');
       w.setFade(false);
       this.busy = false;
     }, FADE_MS);

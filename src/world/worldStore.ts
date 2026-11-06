@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { storage } from '../utils/storage';
 
 /** Which layer is live: the arcade hall or one of its activities. */
-export type Place = 'world' | 'bowling';
+export type Place = 'world' | 'bowling' | 'airhockey';
 export type WorldScreen = 'loading' | 'title' | 'character' | 'controls' | 'stats' | 'explore' | 'paused';
 
 export interface Outfit {

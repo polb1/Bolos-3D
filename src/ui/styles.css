@@ -365,3 +365,28 @@ body.touch-active .world-help { display: none; }
 }
 body.touch-active .desktop-only { display: none; }
 body.touch-active .world-prompt { bottom: 190px; white-space: nowrap; }
+
+/* ---------- air hockey ---------- */
+#hockey-stage { position: absolute; inset: 0; touch-action: none; }
+#hockey-stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.hockey-hud {
+  position: absolute; top: 12px; left: 0; right: 0; margin: 0 auto; width: max-content; z-index: 10;
+  display: flex; align-items: center; gap: 14px; padding: 6px 16px; border-radius: 12px;
+  background: #0a1224b3; border: 1px solid var(--border); backdrop-filter: blur(8px); pointer-events: none;
+}
+.hh-score { font-size: 20px; font-weight: 900; display: flex; gap: 8px; font-variant-numeric: tabular-nums; }
+.hh-time { color: var(--blue-1); font-size: 14px; font-variant-numeric: tabular-nums; }
+.hockey-hud .p1, .hockey-final .p1, .hockey-goal.p1 { color: var(--lime); }
+.hockey-hud .p2, .hockey-final .p2, .hockey-goal.p2 { color: #ff4f6e; }
+.hockey-hud .sep, .hockey-final .sep { color: var(--blue-3); }
+.hockey-goal {
+  position: absolute; top: 42%; left: 0; right: 0; margin: 0 auto; width: max-content; z-index: 10;
+  font-size: clamp(26px, 5vw, 40px); font-weight: 900; letter-spacing: 0.06em; pointer-events: none;
+  text-shadow: 0 2px 18px currentColor; animation: hockey-goal 1.4s ease forwards;
+}
+@keyframes hockey-goal { 0% { opacity: 0; transform: scale(0.7); } 15% { opacity: 1; transform: scale(1.05); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+.hockey-opts { display: flex; flex-direction: column; gap: 10px; align-self: stretch; text-align: left; }
+.hockey-help { text-align: left; margin: 0; padding-left: 18px; color: var(--blue-soft); line-height: 1.55; font-size: 14px; }
+.hockey-final { display: flex; gap: 14px; align-items: baseline; font-size: 22px; }
+.hockey-final b { font-size: 46px; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .hockey-hud { left: 12px; right: auto; margin: 0; } }

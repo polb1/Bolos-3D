@@ -12,7 +12,8 @@ Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo 
 El juego arranca en un centro recreativo 2D visto desde arriba, en pixel art y por salas (decisión del usuario); los juegos son 3D. Decisiones y etapas en `ARCHITECTURE.md`.
 - `world/`: `World` (canvas 2D con zoom entero, bucle, movimiento, cámara, salas atenuadas, entrada/salida de actividades), `map` (salas, puertas, muebles), `sprites` (todo dibujado por código píxel a píxel), `collide` (círculo contra cajas), `activities` (registro en casillas), `worldStore`.
 - Solo se dibuja la capa activa (`useWorldStore.place`): `#world-stage` o `#stage` (bolos 3D). Al volver, el personaje sigue donde estaba.
-- Billar, air hockey, futbolín, dardos y recreativas están colocados y muestran «Próximamente»: cada uno irá en `src/games/<id>/` en 3D.
+- **Air hockey** (`src/games/airhockey/`, diseño en `AIR_HOCKEY_DESIGN.md`): física 2D propia y sin gráficos con tests, IA por niveles, modos contra la IA, dos jugadores y entrenamiento. Interfaz en `src/ui/airhockey/`; `window.__hockey.frame(dt)` para probarlo.
+- Billar, futbolín, dardos y recreativas están colocados y muestran «Próximamente»: cada uno irá en `src/games/<id>/` en 3D.
 - En desarrollo, `window.__world` y `window.__game` permiten probar desde la consola; `__world.frame(dt)` avanza un paso aunque el panel del navegador esté oculto.
 
 ## Arquitectura de la bolera (`src/`)
@@ -44,7 +45,7 @@ El juego arranca en un centro recreativo 2D visto desde arriba, en pixel art y p
 - **Fuera de alcance:** modo online, tienda y torneos de la referencia.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (40 tests) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (60 tests) · `npm run build`
 
 ## Pruebas en navegador
 El navegador integrado de la app no tenía WebGL; se probó con Chrome headless + SwiftShader (`--use-angle=swiftshader --enable-unsafe-swiftshader`) y puppeteer-core. En headless los eventos del ratón llegan espaciados y la velocidad del gesto sale falsa. Para medirla bien, envía los eventos por CDP con `Input.dispatchMouseEvent` y un `timestamp` explícito.
