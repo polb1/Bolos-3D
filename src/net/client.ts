@@ -37,8 +37,8 @@ function serverUrl(room: string) {
 class NetClient {
   readonly peers = new Map<string, RemotePeer>();
   id: string | null = null;
-  /** Minigame messages from other players (for future online games). */
-  onGame: ((from: string, data: unknown) => void) | null = null;
+  /** Minigame messages from other players. */
+  private readonly gameListeners = new Set<(from: string, data: unknown) => void>();
   private ws: WebSocket | null = null;
   private hello: { name: string; outfit: number } | null = null;
   private retry = 1000;
@@ -138,7 +138,7 @@ class NetClient {
         this.names();
         break;
       case 'game':
-        this.onGame?.(m.id, m.data);
+        for (const fn of this.gameListeners) fn(m.id, m.data);
         break;
       case 'full':
         useNetStore.setState({ status: 'full' });
@@ -166,6 +166,12 @@ class NetClient {
       p.y += (p.ty - p.y) * k;
       p.anim = p.moving ? p.anim + dt * 9 : 0;
     }
+  }
+
+  /** Listens to minigame payloads; returns the unsubscribe function. */
+  onGame(fn: (from: string, data: unknown) => void) {
+    this.gameListeners.add(fn);
+    return () => this.gameListeners.delete(fn);
   }
 
   /** Sends a minigame payload to everyone else in the room. */

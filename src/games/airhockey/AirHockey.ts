@@ -8,6 +8,21 @@ import { applyGoal, MATCH_TIME, newScore, serveTo, timeUp, type Mode } from './r
 import { PUCK_SPEEDS, useHockeyStore } from './store';
 import { buildArena } from './arena';
 import { buildTable, COLORS, SURFACE_Y, type TableParts } from './table';
+import { net } from '../../net/client';
+
+const SEND_EVERY = 1 / 30; // s between online state messages
+const RIVAL_TIMEOUT = 5; // s without messages before the rival counts as gone
+/** How far ahead to project the host's puck (roughly one-way latency). */
+const LEAD = 0.05;
+
+/** Online messages. `hs` host state, `gm` guest mallet, `hit` guest hit, `quit` leaving. */
+type HockeyMsg =
+  | { k: 'hs'; to: string; p: [number, number, number, number, number]; m: [number, number]; t: number; sc: [number, number, number, number]; h: number }
+  | { k: 'gm'; to: string; m: [number, number] }
+  | { k: 'hit'; to: string; p: [number, number, number, number]; h: number }
+  | { k: 'quit'; to: string };
+
+const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
 const KEYS_P1: Record<string, [number, number]> = { KeyW: [0, 1], KeyS: [0, -1], KeyA: [-1, 0], KeyD: [1, 0] };
 const KEYS_P2: Record<string, [number, number]> = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
@@ -43,6 +58,13 @@ export class AirHockey {
   private flashColor = new THREE.Color(COLORS.p1);
   private stall = 0;
   private timeAcc = 0;
+  // Online state.
+  private remote = { x: 0, z: 0 };
+  private sendT = 0;
+  private lastHeard = 0;
+  /** Guest: hits sent so far; host: last guest hit applied (echoed back so stale states are ignored). */
+  private hitSeq = 0;
+  private lastHitSent = 0;
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -99,6 +121,120 @@ export class AirHockey {
     window.addEventListener('resize', this.resize);
     this.resize();
     this.loop();
+    net.onGame((from, data) => this.onNet(from, data as HockeyMsg));
+  }
+
+  // ------------------------------------------------------------------ online
+  /** Starts a match against another player; blue (host) simulates, red (guest) predicts. */
+  startOnline(role: 'host' | 'guest', rival: { id: string; name: string }) {
+    audio.unlock();
+    const st = useHockeyStore.getState();
+    st.set({ mode: 'online', online: { role, rival: rival.id, rivalName: rival.name, rivalLeft: false }, score: newScore(st.settings.target), time: 0, lastGoal: null });
+    this.reset('online');
+    // Same feel for both players regardless of their local settings.
+    this.physics = new HockeyPhysics({ maxPuckSpeed: PUCK_SPEEDS.normal });
+    for (const m of this.physics.mallets) (m.maxSpeed = HUMAN_SPEED), (m.maxAccel = HUMAN_ACCEL);
+    this.physics.puck.live = false;
+    this.remote = { x: 0, z: role === 'host' ? -0.7 : 0.7 };
+    this.hitSeq = 0;
+    this.lastHeard = performance.now();
+    st.setScreen('playing');
+    if (role === 'host') {
+      this.serveSide = Math.random() < 0.5 ? 1 : -1;
+      this.serveIn = 2;
+    }
+    audio.hockeyBuzzer('start');
+  }
+
+  /** Leaving an online match tells the rival. */
+  quitOnline() {
+    const o = useHockeyStore.getState().online;
+    if (o && !o.rivalLeft) net.sendGame({ k: 'quit', to: o.rival } satisfies HockeyMsg);
+    useHockeyStore.getState().set({ online: null, mode: 'ai' });
+  }
+
+  private onNet(from: string, m: HockeyMsg) {
+    const st = useHockeyStore.getState();
+    const o = st.online;
+    if (!o || from !== o.rival || !m || (m as { to?: string }).to !== net.id || st.mode !== 'online') return;
+    this.lastHeard = performance.now();
+    const ph = this.physics;
+    const p = ph.puck;
+    if (m.k === 'quit') return this.rivalGone();
+    if (o.role === 'host') {
+      if (m.k === 'gm') this.remote = { x: num(m.m?.[0]), z: num(m.m?.[1]) };
+      else if (m.k === 'hit' && p.z < 0.15) {
+        // The guest's own hit is authoritative: take its puck state.
+        Object.assign(p, { x: num(m.p?.[0]), z: num(m.p?.[1]), vx: num(m.p?.[2]), vz: num(m.p?.[3]), live: true });
+        this.hitSeq = Math.max(this.hitSeq, num(m.h));
+      }
+      return;
+    }
+    if (m.k !== 'hs') return;
+    this.remote = { x: num(m.m?.[0]), z: num(m.m?.[1]) };
+    const [x, z, vx, vz, live] = (m.p ?? []).map(num);
+    // Ignore states sent before the host saw our latest hit.
+    if (num(m.h) >= this.hitSeq) {
+      const me = ph.mallets[1];
+      const hx = x + vx * LEAD;
+      const hz = z + vz * LEAD;
+      const err = Math.hypot(hx - p.x, hz - p.z);
+      const mine = p.z < 0 && Math.hypot(p.x - me.x, p.z - me.z) < 0.22; // our mallet is on it: trust local
+      if (!live) Object.assign(p, { x, z, vx: 0, vz: 0, live: false });
+      else if (!p.live || err > 0.25) Object.assign(p, { x: hx, z: hz, vx, vz, live: true });
+      else if (!mine) {
+        p.x += (hx - p.x) * 0.3;
+        p.z += (hz - p.z) * 0.3;
+        p.vx = vx;
+        p.vz = vz;
+      }
+    }
+    const [p1, p2, golden, winner] = (m.sc ?? []).map(num);
+    const prev = st.score;
+    const win: Side | null = winner === 1 || winner === -1 ? winner : null;
+    if (p1 !== prev.p1 || p2 !== prev.p2 || !!golden !== prev.golden || win !== prev.winner) {
+      const score = { ...prev, p1, p2, golden: !!golden, winner: win };
+      const scorer: Side | null = p1 > prev.p1 ? 1 : p2 > prev.p2 ? -1 : null;
+      st.set({ score, ...(scorer ? { lastGoal: { scorer, n: (st.lastGoal?.n ?? 0) + 1 } } : {}) });
+      if (scorer) this.goalFx(scorer, score);
+      if (score.winner && !this.endIn) this.endIn = 1.4;
+    }
+    st.set({ time: num(m.t) });
+  }
+
+  private rivalGone() {
+    const st = useHockeyStore.getState();
+    if (!st.online || st.online.rivalLeft) return;
+    st.set({ online: { ...st.online, rivalLeft: true } });
+    this.physics.puck.live = false;
+    if (st.screen === 'playing' || st.screen === 'paused') st.setScreen('end');
+  }
+
+  /** Online part of a frame: drive the rival's mallet, exchange state, watch for drops. */
+  private syncOnline(dt: number) {
+    const st = useHockeyStore.getState();
+    const o = st.online!;
+    const ph = this.physics;
+    const host = o.role === 'host';
+    const other = ph.mallets[host ? 1 : 0];
+    other.tx = this.remote.x;
+    other.tz = this.remote.z;
+    if (!net.peers.has(o.rival) || performance.now() - this.lastHeard > RIVAL_TIMEOUT * 1000) return this.rivalGone();
+    if ((this.sendT -= dt) > 0) return;
+    this.sendT = SEND_EVERY;
+    const r = (v: number) => Math.round(v * 1000) / 1000;
+    if (host) {
+      const p = ph.puck;
+      const s = st.score;
+      const me = ph.mallets[0];
+      net.sendGame({
+        k: 'hs', to: o.rival, p: [r(p.x), r(p.z), r(p.vx), r(p.vz), p.live ? 1 : 0], m: [r(me.x), r(me.z)],
+        t: Math.round(st.time * 10) / 10, sc: [s.p1, s.p2, s.golden ? 1 : 0, s.winner ?? 0], h: this.hitSeq,
+      } satisfies HockeyMsg);
+    } else {
+      const me = ph.mallets[1];
+      net.sendGame({ k: 'gm', to: o.rival, m: [r(me.x), r(me.z)] } satisfies HockeyMsg);
+    }
   }
 
   // ------------------------------------------------------------------ public API (UI)
@@ -122,6 +258,7 @@ export class AirHockey {
   }
 
   pause() {
+    if (useHockeyStore.getState().mode === 'online') return; // the rival keeps playing: no pause online
     if (useHockeyStore.getState().screen === 'playing') useHockeyStore.getState().setScreen('paused');
   }
 
@@ -148,13 +285,16 @@ export class AirHockey {
       m.maxAccel = HUMAN_ACCEL * s.sensitivity;
     }
     m2.active = mode !== 'training';
+    // Online: blue home side vs red visitors (as the circles in the hall).
+    const tint = mode === 'online' ? [0x3a8bff, 0xff3b4f] : [COLORS.p1, COLORS.p2];
+    this.table.mallets.forEach((m, i) => (m.material as THREE.MeshStandardMaterial).color.set(tint[i]));
     this.table.mallets[1].visible = m2.active;
     this.ai = new HockeyAI(m2, AI_PROFILES[s.difficulty]);
     this.physics.puck.live = false;
     this.physics.puck.z = 0;
     this.pointers.clear();
     this.serveIn = this.endIn = this.flash = this.stall = 0;
-    this.table.scoreboard.draw(0, 0, mode === 'training' ? 'ENTRENAMIENTO' : mode === 'versus' ? 'J2 · J1' : 'IA · TÚ');
+    this.table.scoreboard.draw(0, 0, this.boardLabel(mode));
     this.setLeds(null);
     this.placeCamera(mode);
   }
@@ -203,7 +343,7 @@ export class AirHockey {
     const p = this.tablePoint(e);
     if (!p) return;
     const mode = useHockeyStore.getState().mode;
-    let side: Side = 1;
+    let side: Side = this.mySide;
     if (mode === 'versus') {
       // Each finger keeps the half it started in; the mouse steers whichever half it is over.
       const known = this.pointers.get(e.pointerId);
@@ -211,9 +351,16 @@ export class AirHockey {
       if (e.pointerType !== 'mouse' && known === undefined) this.pointers.set(e.pointerId, side);
     }
     const m = this.physics.mallets[side === 1 ? 0 : 1];
-    m.tx = p.x;
-    m.tz = p.z;
+    // The red player sees the table turned round: display coords are mirrored.
+    const f = this.mySide;
+    m.tx = p.x * f;
+    m.tz = p.z * f;
   };
+
+  /** The side this screen controls (red when joining an online match). */
+  private get mySide(): Side {
+    return useHockeyStore.getState().online?.role === 'guest' ? -1 : 1;
+  }
 
   private onPointerUp = (e: PointerEvent) => {
     this.pointers.delete(e.pointerId);
@@ -247,7 +394,7 @@ export class AirHockey {
     if (Math.hypot(ux, uz) < 0.2) (ux = -e[8]), (uz = -e[10]);
     const ul = Math.hypot(ux, uz);
     const rl = Math.hypot(rx, rz);
-    const v = KEY_SPEED * useHockeyStore.getState().settings.sensitivity * dt;
+    const v = KEY_SPEED * useHockeyStore.getState().settings.sensitivity * dt * (m.side === this.mySide ? this.mySide : 1);
     const b = malletBounds(m.side);
     // Start from where the mallet is if the target ran away (e.g. after mouse use).
     if (Math.hypot(m.tx - m.x, m.tz - m.z) > 0.15) (m.tx = m.x), (m.tz = m.z);
@@ -276,27 +423,40 @@ export class AirHockey {
     if (st.screen !== 'playing') return;
     const ph = this.physics;
     const [m1, m2] = ph.mallets;
+    const online = st.mode === 'online';
+    const guest = online && st.online?.role === 'guest';
 
-    this.steer(m1, st.mode === 'versus' ? KEYS_P1 : { ...KEYS_P1, ...KEYS_P2 }, dt);
+    if (online) {
+      this.steer(guest ? m2 : m1, { ...KEYS_P1, ...KEYS_P2 }, dt);
+      this.syncOnline(dt);
+      if (useHockeyStore.getState().screen !== 'playing') return;
+    } else this.steer(m1, st.mode === 'versus' ? KEYS_P1 : { ...KEYS_P1, ...KEYS_P2 }, dt);
     if (st.mode === 'versus') this.steer(m2, KEYS_P2, dt);
     else if (st.mode === 'ai') this.ai.update(dt, ph);
 
-    if (this.serveIn > 0 && (this.serveIn -= dt) <= 0) {
+    if (!guest && this.serveIn > 0 && (this.serveIn -= dt) <= 0) {
       ph.serve(this.serveSide, 0);
       this.ai.reset();
     }
     if (this.endIn > 0 && (this.endIn -= dt) <= 0) {
       st.setScreen('end');
-      audio.hockeyBuzzer(st.mode === 'versus' || st.score.winner === 1 ? 'win' : 'lose');
+      audio.hockeyBuzzer(st.mode === 'versus' || st.score.winner === this.mySide ? 'win' : 'lose');
       return;
     }
 
     for (const ev of ph.step(dt)) {
       if (ev.type === 'hit') {
+        // Pushing the puck makes a burst of contacts: report at most one hit every 50 ms.
+        if (guest && Math.hypot(ev.x - m2.x, ev.z - m2.z) < 0.12 && performance.now() - this.lastHitSent > 50) {
+          this.lastHitSent = performance.now();
+          // Our own hit: tell the host right away so both screens agree.
+          const p = ph.puck;
+          net.sendGame({ k: 'hit', to: st.online!.rival, p: [p.x, p.z, p.vx, p.vz], h: ++this.hitSeq } satisfies HockeyMsg);
+        }
         audio.hockeyHit('mallet', ev.force);
-        this.ring(ev.x, ev.z, ev.force);
+        this.ring(ev.x * this.mySide, ev.z * this.mySide, ev.force);
       } else if (ev.type === 'wall') audio.hockeyHit('rail', ev.force);
-      else if (ev.type === 'goal') this.onGoal(ev.scorer);
+      else if (ev.type === 'goal' && !guest) this.onGoal(ev.scorer);
     }
 
     // Training: a puck left dead in the empty far half comes back to you.
@@ -305,7 +465,7 @@ export class AirHockey {
       if ((this.stall += dt) > 1.2) (this.stall = 0), ph.serve(1, 0);
     } else this.stall = 0;
 
-    if (!this.endIn) {
+    if (!this.endIn && !guest) {
       this.timeAcc += dt;
       if (this.timeAcc >= 0.25) {
         const time = st.time + this.timeAcc;
@@ -329,15 +489,24 @@ export class AirHockey {
     const st = useHockeyStore.getState();
     const score = applyGoal(st.score, scorer, st.mode);
     st.set({ score, lastGoal: { scorer, n: (st.lastGoal?.n ?? 0) + 1 } });
-    audio.hockeyGoal(st.mode !== 'ai' || scorer === 1);
-    this.table.scoreboard.draw(score.p1, score.p2, st.mode === 'training' ? 'ENTRENAMIENTO' : st.mode === 'versus' ? 'J2 · J1' : 'IA · TÚ');
-    this.flash = 1.2;
-    this.flashColor.set(scorer === 1 ? COLORS.p1 : COLORS.p2);
+    this.goalFx(scorer, score);
     if (score.winner) this.endIn = 1.4;
     else {
       this.serveSide = serveTo(scorer, st.mode);
       this.serveIn = 1.1;
     }
+  }
+
+  private goalFx(scorer: Side, score: { p1: number; p2: number }) {
+    const mode = useHockeyStore.getState().mode;
+    audio.hockeyGoal(mode === 'versus' || mode === 'training' || scorer === this.mySide);
+    this.table.scoreboard.draw(score.p1, score.p2, this.boardLabel(mode));
+    this.flash = 1.2;
+    this.flashColor.set(scorer === 1 ? COLORS.p1 : COLORS.p2);
+  }
+
+  private boardLabel(mode: Mode) {
+    return mode === 'training' ? 'ENTRENAMIENTO' : mode === 'versus' ? 'J2 · J1' : mode === 'online' ? 'ROJO · AZUL' : 'IA · TÚ';
   }
 
   private ring(x: number, z: number, force: number) {
@@ -362,8 +531,9 @@ export class AirHockey {
     const { puck, mallets } = this.table;
     const ph = this.physics;
     puck.visible = ph.puck.live;
-    puck.position.set(ph.puck.x, SURFACE_Y + 0.004, ph.puck.z);
-    ph.mallets.forEach((m, i) => mallets[i].position.set(m.x, SURFACE_Y, m.z));
+    const f = this.mySide;
+    puck.position.set(ph.puck.x * f, SURFACE_Y + 0.004, ph.puck.z * f);
+    ph.mallets.forEach((m, i) => mallets[i].position.set(m.x * f, SURFACE_Y, m.z * f));
 
     for (const r of this.rings) {
       if (r.t >= 1) continue;

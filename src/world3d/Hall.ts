@@ -4,6 +4,7 @@ import { createBallMesh, createPinMesh } from '../scene/pinMesh';
 import { laneWoodTexture } from '../scene/textures';
 import { box, type Box } from '../world/collide';
 import * as P from './props';
+import { HOCKEY_TABLES } from './activities';
 import { arcadeCarpet, lightPool, tiles, wallPanels } from './textures';
 
 /** Hall footprint: x ∈ [-HX, HX], z ∈ [-HZ, HZ]. */
@@ -213,8 +214,7 @@ export class Hall {
   }
 
   private airHockey() {
-    this.put(P.airHockeyTable(0xff3355), 14.2, 0, 0, [2.2, 1.15]);
-    this.put(P.airHockeyTable(0x3a8bff), 14.2, 4.4, 0, [2.2, 1.15]);
+    HOCKEY_TABLES.forEach((t, i) => this.put(P.airHockeyTable(i ? 0x3a8bff : 0xff3355), t.x, t.z, 0, [2.2, 1.15]));
     this.sign('AIR HOCKEY', '#ff4f6e', 0.6, HX - 0.06, 3.4, 2.2, -Math.PI / 2);
     this.floorGlow('#ff4f6e', 13.5, 2.2, 6);
   }

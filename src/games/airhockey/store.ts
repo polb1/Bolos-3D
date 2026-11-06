@@ -5,6 +5,15 @@ import type { Side } from './physics';
 import { newScore, type Mode, type Score } from './rules';
 
 export type HockeyScreen = 'menu' | 'settings' | 'controls' | 'playing' | 'paused' | 'end';
+/** Online match: the host (blue, side 1) runs the simulation; the guest is red (side -1). */
+export interface OnlineMatch {
+  role: 'host' | 'guest';
+  rival: string;
+  rivalName: string;
+  /** Set when the rival quits or drops. */
+  rivalLeft: boolean;
+}
+
 export type PuckSpeed = 'slow' | 'normal' | 'fast';
 
 export interface HockeySettings {
@@ -28,9 +37,10 @@ interface HockeyState {
   time: number;
   /** Last goal, for the HUD flash. */
   lastGoal: { scorer: Side; n: number } | null;
+  online: OnlineMatch | null;
   setScreen(s: HockeyScreen): void;
   updateSettings(p: Partial<HockeySettings>): void;
-  set(p: Partial<Pick<HockeyState, 'mode' | 'score' | 'time' | 'lastGoal'>>): void;
+  set(p: Partial<Pick<HockeyState, 'mode' | 'score' | 'time' | 'lastGoal' | 'online'>>): void;
 }
 
 export const useHockeyStore = create<HockeyState>((set) => ({
@@ -40,6 +50,7 @@ export const useHockeyStore = create<HockeyState>((set) => ({
   score: newScore(),
   time: 0,
   lastGoal: null,
+  online: null,
   setScreen: (screen) => set({ screen }),
   updateSettings: (p) =>
     set((s) => {

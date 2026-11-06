@@ -19,7 +19,7 @@ interface Client {
   burst: number;
 }
 
-const MAX_PER_SECOND = 40;
+const MAX_PER_SECOND = 90; // online air hockey sends ~30 state updates/s on top of hall moves
 
 const DIST = join(import.meta.dirname, '..', 'dist');
 const TYPES: Record<string, string> = {

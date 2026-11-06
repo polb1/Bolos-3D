@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { audio } from '../../audio/AudioEngine';
 import { hockeyRef } from '../../games/airhockey/instance';
 import { MATCH_TIME, type Mode } from '../../games/airhockey/rules';
-import { useHockeyStore, type HockeySettings } from '../../games/airhockey/store';
+import { useHockeyStore, type HockeySettings, type OnlineMatch } from '../../games/airhockey/store';
 import { worldRef } from '../../world/instance';
 import { MuteButton } from '../MuteButton';
 
@@ -14,7 +14,22 @@ const click = (fn: () => void) => () => {
 
 const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
-const MODE_NAMES: Record<Mode, string> = { ai: 'Contra la IA', versus: 'Dos jugadores', training: 'Entrenamiento' };
+const MODE_NAMES: Record<Mode, string> = { ai: 'Contra la IA', versus: 'Dos jugadores', training: 'Entrenamiento', online: 'Online' };
+
+/** Score labels [side 1, side -1] from this screen's point of view. */
+function sideNames(mode: Mode, online: OnlineMatch | null, long = false): [string, string] {
+  if (mode === 'online' && online) {
+    const me = long ? 'Tú' : 'TÚ';
+    return online.role === 'host' ? [me, online.rivalName] : [online.rivalName, me];
+  }
+  if (mode === 'versus') return long ? ['Jugador 1', 'Jugador 2'] : ['J1', 'J2'];
+  return long ? ['Tú', 'IA'] : ['TÚ', 'IA'];
+}
+
+function leaveOnline() {
+  hockeyRef.current?.quitOnline();
+  worldRef.current?.leave();
+}
 
 function Options<T extends string | number>(props: { label: string; value: T; options: Array<{ value: T; label: string }>; onChange(v: T): void }) {
   return (
@@ -164,7 +179,9 @@ function Hud() {
   const mode = useHockeyStore((s) => s.mode);
   const time = useHockeyStore((s) => s.time);
   const lastGoal = useHockeyStore((s) => s.lastGoal);
-  const names = mode === 'versus' ? ['J1', 'J2'] : ['TÚ', 'IA'];
+  const online = useHockeyStore((s) => s.online);
+  const names = sideNames(mode, online);
+  const mySide = online?.role === 'guest' ? -1 : 1;
   return (
     <>
       <div className="hockey-hud">
@@ -185,13 +202,25 @@ function Hud() {
           <span className={'hh-time' + (time > MATCH_TIME - 10 ? ' hurry' : '')}>{clock(Math.ceil(Math.max(0, MATCH_TIME - time)))}</span>
         )}
       </div>
+      {mode === 'online' ? (
+        <div className="hud-corner right">
+          <button className="icon-btn" aria-label="Salir" title="Salir de la partida" onClick={click(leaveOnline)}>✕</button>
+        </div>
+      ) : (
       <div className="hud-corner right">
         <button className="icon-btn" aria-label="Reiniciar" title="Reiniciar" onClick={click(() => hockeyRef.current?.restart())}>↺</button>
         <button className="icon-btn" aria-label="Pausa" title="Pausa (ESC)" onClick={click(() => hockeyRef.current?.pause())}>❚❚</button>
       </div>
+      )}
       {lastGoal && (
         <div key={lastGoal.n} className={'hockey-goal ' + (lastGoal.scorer === 1 ? 'p1' : 'p2')}>
-          {mode === 'versus' ? `¡GOL DE J${lastGoal.scorer === 1 ? 1 : 2}!` : lastGoal.scorer === 1 ? '¡GOL!' : 'Gol de la IA'}
+          {mode === 'versus'
+            ? `¡GOL DE J${lastGoal.scorer === 1 ? 1 : 2}!`
+            : lastGoal.scorer === mySide
+              ? '¡GOL!'
+              : mode === 'online'
+                ? `Gol de ${names[lastGoal.scorer === 1 ? 0 : 1]}`
+                : 'Gol de la IA'}
         </div>
       )}
     </>
@@ -216,9 +245,19 @@ function Paused() {
 }
 
 function End() {
-  const { score, mode, time, setScreen } = useHockeyStore();
-  const names = mode === 'versus' ? ['Jugador 1', 'Jugador 2'] : ['Tú', 'IA'];
-  const title = mode === 'versus' ? `¡Gana el ${names[score.winner === 1 ? 0 : 1]}!` : score.winner === 1 ? '¡Has ganado!' : 'Gana la IA';
+  const { score, mode, time, setScreen, online } = useHockeyStore();
+  const names = sideNames(mode, online, true);
+  const mySide = online?.role === 'guest' ? -1 : 1;
+  const title =
+    mode === 'online' && online?.rivalLeft && !score.winner
+      ? `${online.rivalName} ha salido`
+      : mode === 'versus'
+        ? `¡Gana el ${names[score.winner === 1 ? 0 : 1]}!`
+        : score.winner === mySide
+          ? '¡Has ganado!'
+          : mode === 'online'
+            ? `Gana ${online?.rivalName ?? 'tu rival'}`
+            : 'Gana la IA';
   return (
     <Panel title={title}>
       <div className="hockey-final">
@@ -229,12 +268,20 @@ function End() {
       <p className="tagline">
         {MODE_NAMES[mode]} · {score.golden ? 'gol de oro' : time >= MATCH_TIME ? 'por tiempo' : `a ${score.target} goles`} · {clock(time)}
       </p>
-      <button className="btn primary" onClick={click(() => hockeyRef.current?.restart())} autoFocus>
-        Volver a jugar
-      </button>
-      <button className="btn ghost" onClick={click(() => setScreen('menu'))}>
-        Menú
-      </button>
+      {mode === 'online' ? (
+        <button className="btn primary" onClick={click(leaveOnline)} autoFocus>
+          Volver al local
+        </button>
+      ) : (
+        <>
+          <button className="btn primary" onClick={click(() => hockeyRef.current?.restart())} autoFocus>
+            Volver a jugar
+          </button>
+          <button className="btn ghost" onClick={click(() => setScreen('menu'))}>
+            Menú
+          </button>
+        </>
+      )}
     </Panel>
   );
 }

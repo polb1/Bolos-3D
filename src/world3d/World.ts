@@ -11,9 +11,8 @@ import { Hall, SPAWN } from './Hall';
 import { OUTFITS, useWorldStore } from '../world/worldStore';
 import { useHockeyStore } from '../games/airhockey/store';
 import { net } from '../net/client';
-
-/** The wire format keeps positions in 0..100; the 3D hall spans about ±16 m. */
-const NET_OFFSET = 50;
+import { hockeyRef } from '../games/airhockey/instance';
+import { HockeyLobby, NET_OFFSET, SPOT_R, SPOTS, useLobbyStore } from './hockeyLobby';
 
 const WALK = 2.1;
 const RUN = 4.8;
@@ -47,6 +46,8 @@ export class World {
   private readonly raycaster = new THREE.Raycaster();
   private readonly markers = new Map<string, THREE.Group>();
   private readonly ghosts = new Map<string, Ghost>();
+  private readonly spotRings = new Map<string, THREE.Mesh>();
+  readonly lobby = new HockeyLobby((role, rival, table) => this.startOnline(role, rival, table));
   private readonly pos = { x: SPAWN.x, z: SPAWN.z };
   private readonly vel = new THREE.Vector2();
   private facing = SPAWN.yaw;
@@ -88,6 +89,7 @@ export class World {
     this.avatar = new Avatar(OUTFITS[useWorldStore.getState().outfit]?.outfit ?? OUTFITS[0].outfit);
     this.scene.add(this.hall.group, this.avatar.root);
     this.buildMarkers();
+    this.buildSpots();
 
     const unsubQuality = useGameStore.subscribe((st, prev) => {
       if (st.settings.quality !== prev.settings.quality) this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY[st.settings.quality].pixelRatio));
@@ -178,6 +180,21 @@ export class World {
     }, FADE_MS);
   }
 
+  /** Both players said ready on an air hockey table: open the online match. */
+  private startOnline(role: 'host' | 'guest', rival: { id: string; name: string }, _table: number) {
+    const w = useWorldStore.getState();
+    this.busy = true;
+    audio.ui();
+    document.exitPointerLock?.();
+    w.setFade(true);
+    window.setTimeout(() => {
+      w.setPlace('airhockey');
+      hockeyRef.current?.startOnline(role, rival);
+      w.setFade(false);
+      this.busy = false;
+    }, FADE_MS);
+  }
+
   /** Back to the hall from an activity: the character is where it was left. */
   leave() {
     const w = useWorldStore.getState();
@@ -241,6 +258,42 @@ export class World {
       arrow.visible = on;
       arrow.position.y = 2.25 + Math.sin(this.time * 3) * 0.08;
       arrow.rotation.y = this.time * 2;
+    }
+  }
+
+  // ------------------------------------------------------------------ online air hockey circles
+  private buildSpots() {
+    for (const s of SPOTS) {
+      const color = s.side === 'blue' ? 0x3a8bff : 0xff3b4f;
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(SPOT_R - 0.09, SPOT_R, 48),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, toneMapped: false, depthWrite: false }),
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(s.x, 0.03, s.z);
+      const fill = new THREE.Mesh(
+        new THREE.CircleGeometry(SPOT_R - 0.09, 48),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.12, toneMapped: false, depthWrite: false }),
+      );
+      fill.position.z = 0.001;
+      ring.add(fill);
+      this.scene.add(ring);
+      this.spotRings.set(s.key, ring);
+    }
+  }
+
+  private updateSpots() {
+    const occupied = new Set<string>();
+    const mine = useLobbyStore.getState().spot?.key;
+    if (mine) occupied.add(mine);
+    for (const p of net.peers.values()) {
+      if (p.place !== 'world') continue;
+      for (const s of SPOTS) if (Math.hypot(p.x - NET_OFFSET - s.x, p.y - NET_OFFSET - s.z) <= SPOT_R + 0.15) occupied.add(s.key);
+    }
+    for (const [key, ring] of this.spotRings) {
+      const on = occupied.has(key);
+      (ring.material as THREE.MeshBasicMaterial).opacity = on ? 0.95 : 0.45 + Math.sin(this.time * 3) * 0.1;
+      ring.scale.setScalar(on ? 1 + Math.sin(this.time * 5) * 0.04 : 1);
     }
   }
 
@@ -409,6 +462,9 @@ export class World {
     else this.vel.multiplyScalar(0);
     this.avatar.update(dt, this.vel.length(), this.time);
     this.updateGhosts(dt);
+    const exploring = w.screen === 'explore' && !this.busy;
+    this.lobby.update(dt, exploring ? this.pos.x : null, exploring ? this.pos.z : null);
+    this.updateSpots();
 
     const near = w.screen === 'explore' ? nearestActivity(this.pos.x, this.pos.z)?.id ?? null : null;
     if (near !== w.nearby) w.setNearby(near);

@@ -1,6 +1,6 @@
 import type { Side } from './physics';
 
-export type Mode = 'ai' | 'versus' | 'training';
+export type Mode = 'ai' | 'versus' | 'training' | 'online';
 
 /** Match clock, s: first to the goal target or whoever leads when it runs out. */
 export const MATCH_TIME = 90;

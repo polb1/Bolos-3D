@@ -423,3 +423,16 @@ body.touch-active .look-hint {
   body.touch-active .world-prompt { bottom: 18px; left: auto; right: 16px; margin: 0; }
   .world-toast { top: 64px; }
 }
+
+/* ---------- online air hockey lobby ---------- */
+.lobby-panel {
+  position: absolute; top: calc(64px + env(safe-area-inset-top)); left: 0; right: 0; margin: 0 auto; width: min(340px, 92vw); z-index: 12;
+  background: var(--panel); border: 2px solid; border-radius: 16px; padding: 12px 16px; text-align: center;
+  backdrop-filter: blur(8px); animation: rise 0.2s ease;
+}
+.lobby-panel.blue { border-color: #3a8bff; box-shadow: 0 0 24px #3a8bff55; }
+.lobby-panel.red { border-color: #ff3b4f; box-shadow: 0 0 24px #ff3b4f55; }
+.lobby-panel p { margin: 6px 0 10px; font-size: 14px; color: var(--blue-1); }
+.lobby-panel .btn { width: 100%; }
+.lobby-side { font-weight: 900; letter-spacing: 0.04em; }
+.lobby-panel .lobby-hint { font-size: 12px; margin: 8px 0 0; opacity: 0.8; }

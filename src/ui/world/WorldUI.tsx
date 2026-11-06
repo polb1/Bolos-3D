@@ -1,3 +1,4 @@
+import { useLobbyStore } from '../../world3d/hockeyLobby';
 import { useRef, type PointerEvent as RPointerEvent } from 'react';
 import { audio } from '../../audio/AudioEngine';
 import { useGameStore } from '../../store/useGameStore';
@@ -216,6 +217,36 @@ function TouchPad() {
   );
 }
 
+/** Standing in an air hockey circle: who is opposite and the ready button. */
+function HockeyLobbyPanel() {
+  const { spot, ready, rival } = useLobbyStore();
+  const status = useNetStore((s) => s.status);
+  if (!spot) return null;
+  const blue = spot.side === 'blue';
+  const toggle = () => {
+    const w = worldRef.current;
+    if (w && 'lobby' in w) w.lobby.toggleReady();
+  };
+  return (
+    <div className={'lobby-panel ' + spot.side}>
+      <div className="lobby-side">{blue ? '🔵 Lado azul · local' : '🔴 Lado rojo · visitante'}</div>
+      {status !== 'online' ? (
+        <p>Necesitas conexión para jugar online</p>
+      ) : !rival ? (
+        <p>Esperando a un rival en el círculo {blue ? 'rojo' : 'azul'}…</p>
+      ) : (
+        <p>
+          Rival: <b>{rival.name}</b> · {rival.ready ? '✅ listo' : 'aún no está listo'}
+        </p>
+      )}
+      <button className={'btn ' + (ready ? 'ghost' : 'primary')} disabled={status !== 'online'} onClick={click(toggle)}>
+        {ready ? 'Cancelar' : '¡Listo!'}
+      </button>
+      {ready && <p className="lobby-hint">{rival?.ready ? 'Empezando…' : 'La partida empieza cuando los dos estéis listos'}</p>}
+    </div>
+  );
+}
+
 /** Who else is in the room; the game is fully playable offline too. */
 function OnlineChip() {
   const { status, room, names } = useNetStore();
@@ -264,6 +295,7 @@ function Hud() {
         </button>
       )}
       {toast && <div className="world-toast">{toast}</div>}
+      <HockeyLobbyPanel />
       <div className="world-help desktop-help">
         <b>WASD</b> moverse · <b>Shift</b> correr · <b>E</b> interactuar · <b>ESC</b> menú
       </div>
