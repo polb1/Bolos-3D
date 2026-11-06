@@ -29,9 +29,9 @@
 | Motor de física | **Propio en 2D**, en `physics.ts`. El juego ocurre en un plano y solo hay círculos y bordes rectos. Rapier no aporta nada y así se controla el CCD con subpasos de 1/600 s: a 14 m/s el disco avanza 2,3 cm, menos que su radio, y nunca atraviesa un borde. Funciona sin gráficos y tiene tests. |
 | Colchón de aire | Arrastre exponencial de 0,06/s: el disco pierde menos de un 7 % por segundo. |
 | Bordes | Restitución normal de 0,86 y conservación tangencial de 0,97. El ángulo de salida depende del de entrada, sin aleatoriedad. Los postes de las porterías son puntos redondos. |
-| Mazo | Persigue el objetivo de la mano con un tope de velocidad y aceleración (movimiento "arrive"). Va limitado a su mitad y dentro de los bordes. Si el disco queda pillado contra un borde, el mazo cede y no lo atraviesa. |
-| Choque mazo-disco | Impulso con la velocidad relativa y restitución de 0,78, contra un mazo de masa infinita. |
-| Límite de velocidad | Configurable: lento 8, normal 11 y rápido 14 m/s. |
+| Mazo | Persigue el objetivo de la mano con un tope de velocidad (5,5 m/s) y aceleración (70 m/s²), con movimiento "arrive": sigue al cursor de forma suave, sin saltos. Va limitado a su mitad y dentro de los bordes. Si el disco queda pillado contra un borde, el mazo cede y no lo atraviesa. |
+| Choque mazo-disco | Impulso con la velocidad relativa y restitución de 0,45 (choques suaves, a petición del usuario), contra un mazo de masa infinita. |
+| Límite de velocidad | Configurable: lento 5, normal 6,5 y rápido 8,5 m/s (se bajó porque iba demasiado rápido). |
 | Render | Three.js imperativo, igual que la bolera: `AirHockey.ts` copia el estado de la física en las mallas en cada fotograma. |
 
 ## 3. IA (`ai.ts`)
@@ -55,10 +55,11 @@ Ante tiros limpios a puerta de 4–9 m/s, la IA para un 70 % (fácil), un 85 % (
   - **Contra la IA**
   - **Dos jugadores:** cámara cenital. J1 juega con WASD a la izquierda y J2 con las flechas a la derecha. En pantalla táctil, cada dedo se queda con la mitad donde empezó.
   - **Entrenamiento:** sin rival. Si el disco se queda parado en la mitad vacía, vuelve a ti.
-- **Partida:** a 7 goles por defecto (configurable a 3, 5, 7 o 10). El primer saque se sortea y después saca quien recibe el gol. El reloj de partida se para al final.
+- **Partida:** gana el primero que llegue a 10 goles (configurable a 5, 7, 10 o 15) o quien vaya por delante al acabar el 1:30. Si hay empate al final, gol de oro. El primer saque se sortea y después saca quien recibe el gol. El reloj va hacia atrás y se pone rojo en los últimos 10 s.
 - **Ajustes:** goles, dificultad, velocidad del disco y sensibilidad. La sensibilidad escala la velocidad y la aceleración del mazo y la velocidad con teclado. Se guardan en `localStorage`.
 - **Sonido:** sintetizado en `AudioEngine`. Hay clac de mazo, clac de borde, caída en la ranura con aviso de gol, bocina de inicio, fanfarria o caída al final y zumbido del soplador.
 - **Efectos:** un anillo en cada golpe, el parpadeo de los LEDs con el color de quien marca y el marcador elevado.
+- **Estadio** (`arena.ts`): suelo brillante con estrella y anillos de neón, cielo morado, gradas en anillo con público de colores (InstancedMesh), aros de neón flotantes y cuatro torres de luz rosa y azul.
 
 ## 5. Archivos
 ```
@@ -67,6 +68,7 @@ src/games/airhockey/
   ai.ts        rival por niveles; predictX con rebotes
   rules.ts     marcador, final y saque
   store.ts     estado para la interfaz y ajustes guardados
+  arena.ts     estadio alrededor de la mesa
   table.ts     mesa 3D, marcador en canvas, mazos y disco
   AirHockey.ts escena, cámara, entrada (ratón, táctil, teclado), flujo de partida y audio
   airhockey.test.ts

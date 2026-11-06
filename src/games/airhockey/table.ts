@@ -142,7 +142,7 @@ export function buildTable(): TableParts {
   surface.receiveShadow = true;
   root.add(surface);
 
-  const body = new THREE.MeshPhysicalMaterial({ color: 0x141d33, roughness: 0.45, metalness: 0.2, clearcoat: 0.6 });
+  const body = new THREE.MeshPhysicalMaterial({ color: 0x1c1240, roughness: 0.45, metalness: 0.2, clearcoat: 0.6 });
   const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe6f0, roughness: 0.15, metalness: 1 });
   const rail = new THREE.MeshPhysicalMaterial({ color: 0x1b2742, roughness: 0.3, clearcoat: 1 });
   const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {

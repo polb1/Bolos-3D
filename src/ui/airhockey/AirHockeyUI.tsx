@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { audio } from '../../audio/AudioEngine';
 import { hockeyRef } from '../../games/airhockey/instance';
-import type { Mode } from '../../games/airhockey/rules';
+import { MATCH_TIME, type Mode } from '../../games/airhockey/rules';
 import { useHockeyStore, type HockeySettings } from '../../games/airhockey/store';
 import { worldRef } from '../../world/instance';
 import { MuteButton } from '../MuteButton';
@@ -69,7 +69,7 @@ function Menu() {
           AIR <span>HOCKEY</span>
         </h1>
         <p className="menu-tagline">
-          A {settings.target} goles · IA {diff}
+          A {settings.target} goles o {clock(MATCH_TIME)} · IA {diff}
         </p>
         <div className="menu-buttons">
           <button className="btn primary xl" onClick={start('ai')} autoFocus>
@@ -104,7 +104,7 @@ function Settings() {
   return (
     <Panel title="Configuración">
       <div className="hockey-opts">
-        <Options label="Goles" value={s.target} onChange={set('target')} options={[3, 5, 7, 10].map((n) => ({ value: n, label: String(n) }))} />
+        <Options label="Goles" value={s.target} onChange={set('target')} options={[5, 7, 10, 15].map((n) => ({ value: n, label: String(n) }))} />
         <Options
           label="IA"
           value={s.difficulty}
@@ -149,6 +149,7 @@ function Controls() {
         <li><b>Móvil</b>: desliza el dedo por tu mitad.</li>
         <li><b>Dos jugadores</b>: J1 con WASD (izquierda), J2 con flechas (derecha). En pantalla táctil, cada uno con su dedo en su mitad.</li>
         <li><b>ESC</b>: pausa.</li>
+        <li>Gana quien llegue antes a 10 goles o quien vaya por delante al acabar el 1:30. Empate al final: gol de oro.</li>
         <li>No puedes cruzar la línea central. Gol cuando el disco entra entero en la ranura; saca quien lo recibe.</li>
       </ul>
       <button className="btn primary" onClick={click(() => setScreen('menu'))}>
@@ -176,7 +177,13 @@ function Hud() {
             <span className="p2">{score.p2} {names[1]}</span>
           </span>
         )}
-        <span className="hh-time">{clock(time)}</span>
+        {mode === 'training' ? (
+          <span className="hh-time">{clock(time)}</span>
+        ) : score.golden ? (
+          <span className="hh-time golden">GOL DE ORO</span>
+        ) : (
+          <span className={'hh-time' + (time > MATCH_TIME - 10 ? ' hurry' : '')}>{clock(Math.ceil(Math.max(0, MATCH_TIME - time)))}</span>
+        )}
       </div>
       <div className="hud-corner right">
         <button className="icon-btn" aria-label="Reiniciar" title="Reiniciar" onClick={click(() => hockeyRef.current?.restart())}>↺</button>
@@ -220,7 +227,7 @@ function End() {
         <span className="p2"><b>{score.p2}</b> {names[1]}</span>
       </div>
       <p className="tagline">
-        {MODE_NAMES[mode]} · a {score.target} goles · {clock(time)}
+        {MODE_NAMES[mode]} · {score.golden ? 'gol de oro' : time >= MATCH_TIME ? 'por tiempo' : `a ${score.target} goles`} · {clock(time)}
       </p>
       <button className="btn primary" onClick={click(() => hockeyRef.current?.restart())} autoFocus>
         Volver a jugar

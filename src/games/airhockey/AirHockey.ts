@@ -4,15 +4,16 @@ import { audio } from '../../audio/AudioEngine';
 import { useWorldStore } from '../../world/worldStore';
 import { AI_PROFILES, HockeyAI } from './ai';
 import { HockeyPhysics, malletBounds, TABLE, type Mallet, type Side } from './physics';
-import { applyGoal, newScore, serveTo, type Mode } from './rules';
+import { applyGoal, MATCH_TIME, newScore, serveTo, timeUp, type Mode } from './rules';
 import { PUCK_SPEEDS, useHockeyStore } from './store';
+import { buildArena } from './arena';
 import { buildTable, COLORS, SURFACE_Y, type TableParts } from './table';
 
 const KEYS_P1: Record<string, [number, number]> = { KeyW: [0, 1], KeyS: [0, -1], KeyA: [-1, 0], KeyD: [1, 0] };
 const KEYS_P2: Record<string, [number, number]> = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 const KEY_SPEED = 1.8; // m/s of the hand when steering with keys
-const HUMAN_SPEED = 12;
-const HUMAN_ACCEL = 320;
+const HUMAN_SPEED = 5.5; // smooth follow: the mallet trails the cursor slightly instead of teleporting
+const HUMAN_ACCEL = 70;
 
 /**
  * The air hockey minigame: scene, input and match flow around HockeyPhysics.
@@ -52,8 +53,8 @@ export class AirHockey {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     host.appendChild(this.renderer.domElement);
 
-    this.scene.background = new THREE.Color(COLORS.navy);
-    this.scene.fog = new THREE.Fog(COLORS.navy, 6, 16);
+    this.scene.background = new THREE.Color(0x120a26);
+    this.scene.fog = new THREE.Fog(0x120a26, 10, 24);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.5;
@@ -67,16 +68,7 @@ export class AirHockey {
     spot.shadow.mapSize.set(2048, 2048);
     spot.shadow.bias = -0.0004;
     this.scene.add(spot, spot.target);
-    for (const [x, c] of [[-2.5, COLORS.p2], [2.5, 0x4fb6ff]] as const) {
-      const p = new THREE.PointLight(c, 6, 7);
-      p.position.set(x, 2.2, -1.5);
-      this.scene.add(p);
-    }
-
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x141a2b, roughness: 0.85 }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    this.scene.add(floor);
+    this.scene.add(buildArena());
 
     this.table = buildTable();
     this.scene.add(this.table.root);
@@ -316,8 +308,19 @@ export class AirHockey {
     if (!this.endIn) {
       this.timeAcc += dt;
       if (this.timeAcc >= 0.25) {
-        st.set({ time: st.time + this.timeAcc });
+        const time = st.time + this.timeAcc;
         this.timeAcc = 0;
+        st.set({ time });
+        if (time >= MATCH_TIME && !st.score.golden) {
+          const score = timeUp(st.score, st.mode);
+          if (score !== st.score) {
+            st.set({ score });
+            if (score.winner) {
+              this.endIn = 0.01;
+              ph.puck.live = false;
+            }
+          }
+        }
       }
     }
   }

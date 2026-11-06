@@ -390,3 +390,5 @@ body.touch-active .world-prompt { bottom: 190px; white-space: nowrap; }
 .hockey-final { display: flex; gap: 14px; align-items: baseline; font-size: 22px; }
 .hockey-final b { font-size: 46px; font-variant-numeric: tabular-nums; }
 @media (max-width: 520px) { .hockey-hud { left: 12px; right: auto; margin: 0; } }
+.hh-time.hurry { color: #ff4f6e; font-weight: 800; }
+.hh-time.golden { color: var(--gold); font-weight: 900; letter-spacing: 0.06em; }

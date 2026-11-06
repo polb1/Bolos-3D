@@ -25,7 +25,7 @@ export interface Tuning {
   airDrag: number;
 }
 
-export const DEFAULT_TUNING: Tuning = { maxPuckSpeed: 11, wallE: 0.86, wallGrip: 0.97, malletE: 0.78, airDrag: 0.06 };
+export const DEFAULT_TUNING: Tuning = { maxPuckSpeed: 11, wallE: 0.86, wallGrip: 0.97, malletE: 0.45, airDrag: 0.06 };
 
 export interface Puck {
   x: number;
@@ -58,7 +58,7 @@ const H = 1 / 600; // substep: at 14 m/s the puck moves 2.3 cm, well under its r
 
 export function newMallet(side: Side): Mallet {
   const z = side * (TABLE.length / 2 - 0.2);
-  return { side, x: 0, z, vx: 0, vz: 0, tx: 0, tz: z, maxSpeed: 12, maxAccel: 300, active: true };
+  return { side, x: 0, z, vx: 0, vz: 0, tx: 0, tz: z, maxSpeed: 5.5, maxAccel: 70, active: true };
 }
 
 /** Allowed area for a mallet's centre: its own half, inside the rails. */

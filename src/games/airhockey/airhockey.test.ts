@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '../../utils/random';
 import { AI_PROFILES, HockeyAI, predictX, type Difficulty } from './ai';
 import { HockeyPhysics, malletBounds, TABLE, type HockeyEvent } from './physics';
-import { applyGoal, newScore, serveTo } from './rules';
+import { applyGoal, newScore, serveTo, timeUp } from './rules';
 
 const W = TABLE.width / 2;
 const L = TABLE.length / 2;
@@ -183,7 +183,7 @@ describe('air hockey AI', () => {
         }
       }
     }
-    expect(goals).toBeGreaterThanOrEqual(8);
+    expect(goals).toBeGreaterThanOrEqual(5); // softer mallets: some shots miss and need a second try
   });
 });
 
@@ -199,6 +199,15 @@ describe('air hockey rules', () => {
     expect(applyGoal(s, -1, 'ai')).toBe(s); // no goals after the end
     expect(serveTo(1, 'ai')).toBe(-1);
     expect(serveTo(-1, 'versus')).toBe(1);
+  });
+
+  it('defaults to 10 goals; when time runs out the leader wins, a tie goes to golden goal', () => {
+    expect(newScore().target).toBe(10);
+    expect(timeUp({ ...newScore(), p1: 3, p2: 2 }, 'ai').winner).toBe(1);
+    const tie = timeUp({ ...newScore(), p1: 2, p2: 2 }, 'versus');
+    expect([tie.winner, tie.golden]).toEqual([null, true]);
+    expect(applyGoal(tie, -1, 'versus').winner).toBe(-1);
+    expect(timeUp(newScore(), 'training')).toEqual(newScore());
   });
 
   it('training never ends and always serves back to the player', () => {

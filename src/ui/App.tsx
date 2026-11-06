@@ -14,6 +14,7 @@ import { worldRef } from '../world/instance';
 import { useWorldStore } from '../world/worldStore';
 import { hockeyRef } from '../games/airhockey/instance';
 import { AirHockeyUI } from './airhockey/AirHockeyUI';
+import { useHockeyStore } from '../games/airhockey/store';
 
 export function App() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -38,7 +39,7 @@ export function App() {
         gameRef.current = new Game(stageRef.current);
         worldRef.current = new World(worldStageRef.current);
         hockeyRef.current = new AirHockey(hockeyStageRef.current);
-        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current, __hockey: hockeyRef.current, __stores: { game: useGameStore, world: useWorldStore } }); // for browser testing
+        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current, __hockey: hockeyRef.current, __stores: { game: useGameStore, world: useWorldStore, hockey: useHockeyStore } }); // for browser testing
         st.setScreen('menu');
         useWorldStore.getState().setScreen('title');
       } catch (e) {

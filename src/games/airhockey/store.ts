@@ -15,9 +15,9 @@ export interface HockeySettings {
   sensitivity: number;
 }
 
-export const PUCK_SPEEDS: Record<PuckSpeed, number> = { slow: 8, normal: 11, fast: 14 };
+export const PUCK_SPEEDS: Record<PuckSpeed, number> = { slow: 5, normal: 6.5, fast: 8.5 };
 
-const DEFAULTS: HockeySettings = { target: 7, difficulty: 'normal', puckSpeed: 'normal', sensitivity: 1 };
+const DEFAULTS: HockeySettings = { target: 10, difficulty: 'normal', puckSpeed: 'normal', sensitivity: 1 };
 
 interface HockeyState {
   screen: HockeyScreen;
@@ -36,7 +36,7 @@ interface HockeyState {
 export const useHockeyStore = create<HockeyState>((set) => ({
   screen: 'menu',
   mode: 'ai',
-  settings: storage.get('hockey', DEFAULTS),
+  settings: storage.get('hockey.v2', DEFAULTS), // v2: new 10-goal default replaces saved 7
   score: newScore(),
   time: 0,
   lastGoal: null,
@@ -44,7 +44,7 @@ export const useHockeyStore = create<HockeyState>((set) => ({
   updateSettings: (p) =>
     set((s) => {
       const settings = { ...s.settings, ...p };
-      storage.set('hockey', settings);
+      storage.set('hockey.v2', settings);
       return { settings };
     }),
   set: (p) => set(p),
