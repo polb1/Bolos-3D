@@ -267,6 +267,7 @@ function Hud() {
       <div className="world-help desktop-help">
         <b>WASD</b> moverse · <b>Shift</b> correr · <b>E</b> interactuar · <b>ESC</b> menú
       </div>
+      {useWorldStore.getState().style === '3d' && <div className="look-hint">Arrastra para mirar<br />Pellizca para acercar</div>}
       <TouchPad />
     </>
   );

@@ -402,3 +402,24 @@ body.touch-active .world-prompt { bottom: 190px; white-space: nowrap; }
 .name-field input:focus { border-color: var(--lime); }
 .online-chip { white-space: nowrap; }
 @media (max-width: 520px) { .online-chip { font-size: 11px; } }
+
+/* ---------- phones: hall HUD ---------- */
+.joy { left: calc(26px + env(safe-area-inset-left)); bottom: calc(26px + env(safe-area-inset-bottom)); }
+.world-top { top: calc(12px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); }
+.look-hint { display: none; }
+body.touch-active .look-hint {
+  display: block; position: absolute; right: calc(18px + env(safe-area-inset-right)); bottom: calc(40px + env(safe-area-inset-bottom));
+  z-index: 9; font-size: 12px; color: var(--blue-2); opacity: 0.7; pointer-events: none; text-align: right;
+}
+@media (max-width: 560px) {
+  .world-brand { display: none; }
+  .world-top { left: 10px; right: 10px; justify-content: flex-end; }
+  .online-chip { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .joy { width: 116px; height: 116px; left: calc(18px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom)); }
+  body.touch-active .world-prompt { bottom: calc(160px + env(safe-area-inset-bottom)); font-size: 15px; padding: 10px 18px; }
+}
+@media (max-height: 500px) {
+  .joy { width: 104px; height: 104px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  body.touch-active .world-prompt { bottom: 18px; left: auto; right: 16px; margin: 0; }
+  .world-toast { top: 64px; }
+}

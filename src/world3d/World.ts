@@ -63,6 +63,11 @@ export class World {
   /** Virtual joystick from the touch UI, x/y in [-1, 1] (y up = forward). */
   readonly stick = { x: 0, y: 0, run: false };
   private drag: { id: number; x: number; y: number } | null = null;
+  /** Touch points on the canvas: one drags the camera, two pinch-zoom. */
+  private readonly touches = new Map<number, { x: number; y: number }>();
+  private pinch = 0;
+  /** Until the player zooms, portrait screens get a farther camera. */
+  private zoomed = false;
   private readonly unsub: () => void;
 
   constructor(private readonly host: HTMLElement) {
@@ -100,6 +105,7 @@ export class World {
     c.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerUp);
     c.addEventListener('wheel', this.onWheel, { passive: false });
     document.addEventListener('pointerlockchange', this.onLockChange);
     window.addEventListener('resize', this.resize);
@@ -195,6 +201,7 @@ export class World {
     c.removeEventListener('pointerdown', this.onPointerDown);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerUp);
     c.removeEventListener('wheel', this.onWheel);
     document.removeEventListener('pointerlockchange', this.onLockChange);
     window.removeEventListener('resize', this.resize);
@@ -323,11 +330,35 @@ export class World {
       // Pointer lock gives FPS-style mouse look; if refused, dragging still orbits.
       (this.renderer.domElement.requestPointerLock() as unknown as Promise<void> | undefined)?.catch?.(() => {});
     }
+    if (e.pointerType === 'touch') {
+      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.touches.size === 2) {
+        this.drag = null;
+        this.pinch = this.pinchDist();
+        return;
+      }
+    }
     this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
   };
 
+  private pinchDist() {
+    const [a, b] = [...this.touches.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
   private onPointerMove = (e: PointerEvent) => {
     if (!this.exploring) return;
+    const t = this.touches.get(e.pointerId);
+    if (t) {
+      t.x = e.clientX;
+      t.y = e.clientY;
+      if (this.touches.size === 2) {
+        const d = this.pinchDist();
+        this.zoom((this.pinch - d) * 0.02);
+        this.pinch = d;
+        return;
+      }
+    }
     if (document.pointerLockElement === this.renderer.domElement) {
       this.look(e.movementX, e.movementY, 0.0025);
     } else if (this.drag && e.pointerId === this.drag.id) {
@@ -338,6 +369,7 @@ export class World {
   };
 
   private onPointerUp = (e: PointerEvent) => {
+    this.touches.delete(e.pointerId);
     if (this.drag?.id === e.pointerId) this.drag = null;
   };
 
@@ -349,7 +381,7 @@ export class World {
   private onWheel = (e: WheelEvent) => {
     if (!this.exploring) return;
     e.preventDefault();
-    this.dist = THREE.MathUtils.clamp(this.dist + Math.sign(e.deltaY) * 0.5, MIN_DIST, MAX_DIST);
+    this.zoom(Math.sign(e.deltaY) * 0.5);
   };
 
   private look(dx: number, dy: number, k: number) {
@@ -359,6 +391,7 @@ export class World {
 
   /** Two-finger pinch from the touch UI. */
   zoom(delta: number) {
+    this.zoomed = true;
     this.dist = THREE.MathUtils.clamp(this.dist + delta, MIN_DIST, MAX_DIST);
   }
 
@@ -456,7 +489,8 @@ export class World {
     const h = this.host.clientHeight || window.innerHeight;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
-    this.camera.fov = w / h < 1 ? 75 : 60;
+    this.camera.fov = w / h < 1 ? 72 : 60;
+    if (!this.zoomed) this.dist = w / h < 1 ? 5.4 : 4.2;
     this.camera.updateProjectionMatrix();
   };
 }

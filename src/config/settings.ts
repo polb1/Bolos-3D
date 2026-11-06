@@ -19,7 +19,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ballColor: 'rubi',
   wood: 'clara',
   crowd: true,
-  quality: 'alta',
+  // Phones get the lighter preset by default (high-DPI screens at 2x cost a lot of GPU).
+  quality: typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches ? 'media' : 'alta',
   camera: 'clasica',
 };
 
