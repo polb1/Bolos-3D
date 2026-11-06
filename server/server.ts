@@ -5,6 +5,9 @@
  *
  * Run: npm run server   (PORT env, default 8787)
  */
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, join, normalize, sep } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { cleanRoom, MAX_MSG_BYTES, MAX_PLAYERS, parseClient, type Peer, type ServerMsg } from '../src/net/protocol.ts';
 
@@ -18,9 +21,42 @@ interface Client {
 
 const MAX_PER_SECOND = 40;
 
+const DIST = join(import.meta.dirname, '..', 'dist');
+const TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.wasm': 'application/wasm',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.json': 'application/json',
+  '.ico': 'image/x-icon',
+};
+
+/** Serves the built game (dist/) so one host gives both the page and the room on the same domain. */
+const serveStatic = async (req: IncomingMessage, res: ServerResponse) => {
+  let path: string;
+  try {
+    path = decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname);
+  } catch {
+    return res.writeHead(400).end();
+  }
+  const file = normalize(join(DIST, path === '/' ? 'index.html' : path));
+  if (!file.startsWith(DIST + sep)) return res.writeHead(403).end();
+  try {
+    const body = await readFile(file);
+    const cache = file.includes(`${sep}assets${sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache';
+    res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream', 'Cache-Control': cache }).end(body);
+  } catch {
+    res.writeHead(404).end('No encontrado (¿has hecho npm run build?)');
+  }
+};
+
 export function startServer(port = 8787) {
   const rooms = new Map<string, Set<Client>>();
-  const wss = new WebSocketServer({ port, maxPayload: MAX_MSG_BYTES });
+  const server = createServer(serveStatic);
+  const wss = new WebSocketServer({ server, maxPayload: MAX_MSG_BYTES });
+  server.listen(port);
   let nextId = 1;
 
   const send = (c: Client, m: ServerMsg) => c.ws.readyState === c.ws.OPEN && c.ws.send(JSON.stringify(m));
@@ -73,7 +109,7 @@ export function startServer(port = 8787) {
       new Promise<void>((done) => {
         clearInterval(timer);
         wss.clients.forEach((ws) => ws.terminate());
-        wss.close(() => done());
+        wss.close(() => server.close(() => done()));
       }),
   };
 }

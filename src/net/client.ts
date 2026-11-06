@@ -20,7 +20,10 @@ export interface RemotePeer extends Peer {
 const SEND_EVERY = 0.1; // s, 10 updates per second
 
 function serverUrl(room: string) {
-  const base = import.meta.env.VITE_SERVER_URL || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname || 'localhost'}:8787`;
+  const ws = location.protocol === 'https:' ? 'wss' : 'ws';
+  // dev: Vite on 5173, room on 8787; production: server.ts serves both from the same domain
+  const host = import.meta.env.DEV ? `${location.hostname || 'localhost'}:8787` : location.host;
+  const base = import.meta.env.VITE_SERVER_URL || `${ws}://${host}`;
   return `${base}/?sala=${encodeURIComponent(room)}`;
 }
 

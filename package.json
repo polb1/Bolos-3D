@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "server": "node server/server.ts"
+    "server": "node server/server.ts",
+    "start": "node server/server.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.14.0",
@@ -27,5 +28,8 @@
     "typescript": "5.6",
     "vite": "^6.4.5",
     "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=23.6"
   }
 }

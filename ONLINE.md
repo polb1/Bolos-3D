@@ -23,3 +23,15 @@ Objetivo: que todos los que abran el juego con la misma sala entren en el mismo 
 - `net.sendGame(data)` y `net.onGame = (id, data) => …` ya reenvían mensajes libres a toda la sala.
 - Para el air hockey 1 contra 1, lo sencillo es que el anfitrión ejecute `HockeyPhysics` y emita el estado 20–30 veces por segundo, y que el invitado solo envíe la posición de su mazo. Así la física sigue estando en un único sitio.
 - Falta: retos e invitaciones entre jugadores (un mensaje `game` con `{ type: 'invite' }`), un chat y nombres únicos.
+
+## Publicarlo en internet (p. ej. virtualarcade.polb.dev)
+En producción `server/server.ts` sirve **el juego (dist/) y la sala en el mismo puerto y dominio**, así que basta un único servicio Node:
+
+1. Sube el repo a un hosting con Node y WebSockets (Render «Web Service», Railway o Fly.io; no vale un hosting solo estático como Vercel/Netlify para la sala).
+   - Build: `npm install && npm run build` (`npm install` debe incluir las dev-dependencies para compilar)
+   - Start: `npm start` (usa la variable `PORT` que da el hosting; Node 23.6 o superior)
+2. En el panel del hosting añade el dominio personalizado `virtualarcade.polb.dev`.
+3. En el DNS de `polb.dev` crea un registro **CNAME** `virtualarcade` → el dominio que te dé el hosting (p. ej. `bolera.onrender.com`). El HTTPS lo pone el hosting; `.dev` lo exige y el cliente usa `wss://` solo.
+4. Compartid `https://virtualarcade.polb.dev/?sala=amigos`.
+
+Nota: en planes gratuitos el servicio se duerme tras un rato sin visitas y la primera carga tarda ~30-60 s.
