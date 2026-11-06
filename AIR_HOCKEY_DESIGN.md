@@ -29,9 +29,9 @@
 | Motor de física | **Propio en 2D**, en `physics.ts`. El juego ocurre en un plano y solo hay círculos y bordes rectos. Rapier no aporta nada y así se controla el CCD con subpasos de 1/600 s: a 14 m/s el disco avanza 2,3 cm, menos que su radio, y nunca atraviesa un borde. Funciona sin gráficos y tiene tests. |
 | Colchón de aire | Arrastre exponencial de 0,06/s: el disco pierde menos de un 7 % por segundo. |
 | Bordes | Restitución normal de 0,86 y conservación tangencial de 0,97. El ángulo de salida depende del de entrada, sin aleatoriedad. Los postes de las porterías son puntos redondos. |
-| Mazo | Persigue el objetivo de la mano con un tope de velocidad (5,5 m/s) y aceleración (70 m/s²), con movimiento "arrive": sigue al cursor de forma suave, sin saltos. Va limitado a su mitad y dentro de los bordes. Si el disco queda pillado contra un borde, el mazo cede y no lo atraviesa. |
+| Mazo | Persigue el objetivo de la mano con un tope de velocidad (10 m/s) y aceleración (450 m/s²), con movimiento "arrive": llega a 30 cm en unos 0,05 s, sin retraso apreciable. Va limitado a su mitad y dentro de los bordes. Si el disco queda pillado contra un borde, el mazo cede y no lo atraviesa. |
 | Choque mazo-disco | Impulso con la velocidad relativa y restitución de 0,45 (choques suaves, a petición del usuario), contra un mazo de masa infinita. |
-| Límite de velocidad | Configurable: lento 5, normal 6,5 y rápido 8,5 m/s (se bajó porque iba demasiado rápido). |
+| Límite de velocidad | Configurable: lento 3,5, normal 4,5 y rápido 6 m/s (se bajó dos veces porque iba demasiado rápido). |
 | Render | Three.js imperativo, igual que la bolera: `AirHockey.ts` copia el estado de la física en las mallas en cada fotograma. |
 
 ## 3. IA (`ai.ts`)

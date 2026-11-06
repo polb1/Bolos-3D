@@ -12,8 +12,8 @@ import { buildTable, COLORS, SURFACE_Y, type TableParts } from './table';
 const KEYS_P1: Record<string, [number, number]> = { KeyW: [0, 1], KeyS: [0, -1], KeyA: [-1, 0], KeyD: [1, 0] };
 const KEYS_P2: Record<string, [number, number]> = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 const KEY_SPEED = 1.8; // m/s of the hand when steering with keys
-const HUMAN_SPEED = 5.5; // smooth follow: the mallet trails the cursor slightly instead of teleporting
-const HUMAN_ACCEL = 70;
+const HUMAN_SPEED = 10; // responsive: the mallet stays under the cursor
+const HUMAN_ACCEL = 450;
 
 /**
  * The air hockey minigame: scene, input and match flow around HockeyPhysics.

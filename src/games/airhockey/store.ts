@@ -15,7 +15,7 @@ export interface HockeySettings {
   sensitivity: number;
 }
 
-export const PUCK_SPEEDS: Record<PuckSpeed, number> = { slow: 5, normal: 6.5, fast: 8.5 };
+export const PUCK_SPEEDS: Record<PuckSpeed, number> = { slow: 3.5, normal: 4.5, fast: 6 };
 
 const DEFAULTS: HockeySettings = { target: 10, difficulty: 'normal', puckSpeed: 'normal', sensitivity: 1 };
 
