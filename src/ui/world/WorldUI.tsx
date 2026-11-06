@@ -5,6 +5,8 @@ import { ACTIVITIES } from '../../world/activities';
 import { worldRef } from '../../world/instance';
 import { OUTFITS, useWorldStore, type WorldScreen } from '../../world/worldStore';
 import { MuteButton } from '../MuteButton';
+import { MAX_NAME } from '../../net/protocol';
+import { useNetStore } from '../../net/client';
 
 const click = (fn: () => void) => () => {
   audio.unlock();
@@ -24,6 +26,8 @@ function Back({ to = 'title' }: { to?: WorldScreen }) {
 function Title() {
   const setScreen = useWorldStore((s) => s.setScreen);
   const coins = useGameStore((s) => s.coins);
+  const name = useWorldStore((s) => s.name);
+  const setName = useWorldStore((s) => s.setName);
   return (
     <div className="screen world-title">
       <div className="menu-hero">
@@ -35,6 +39,17 @@ function Title() {
           VIRTUAL <span>ARCADE</span>
         </h1>
         <p className="menu-tagline">Bolera, billar, futbolín, air hockey, dardos y recreativas. Entra y elige.</p>
+        <label className="name-field">
+          Tu nombre online
+          <input
+            value={name}
+            maxLength={MAX_NAME}
+            placeholder="Jugador"
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            aria-label="Tu nombre online"
+          />
+        </label>
         <div className="menu-buttons">
           <button className="btn primary xl" onClick={click(() => worldRef.current?.enter())} autoFocus>
             ▶ Entrar al local
@@ -196,6 +211,24 @@ function TouchPad() {
   );
 }
 
+/** Who else is in the room; the game is fully playable offline too. */
+function OnlineChip() {
+  const { status, room, names } = useNetStore();
+  const text =
+    status === 'online'
+      ? `🟢 Sala ${room} · ${names.length + 1} ${names.length ? 'jugadores' : 'jugador'}`
+      : status === 'connecting'
+        ? '🟡 Conectando…'
+        : status === 'full'
+          ? '🔴 Sala llena'
+          : '⚪ Sin conexión · modo local';
+  return (
+    <span className="record-chip online-chip" title={names.length ? `En la sala: ${names.join(', ')}` : undefined}>
+      {text}
+    </span>
+  );
+}
+
 function Hud() {
   const nearby = useWorldStore((s) => s.nearby);
   const toast = useWorldStore((s) => s.toast);
@@ -206,6 +239,7 @@ function Hud() {
         VIRTUAL <span>ARCADE</span>
       </div>
       <div className="world-top">
+        <OnlineChip />
         <MuteButton />
         <button className="icon-btn" onClick={click(() => worldRef.current?.pause())} title="Menú (ESC)" aria-label="Menú">
           ☰

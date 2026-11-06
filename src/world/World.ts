@@ -6,6 +6,7 @@ import { resolve, type Box } from './collide';
 import { drawStatic, MAP_H, MAP_W, PROPS, ROOMS, roomAt, solids, SPAWN } from './map';
 import { character, px, TILE } from './sprites';
 import { OUTFITS, useWorldStore } from './worldStore';
+import { net } from '../net/client';
 
 const WALK = 4.2; // tiles / s
 const RUN = 7.5;
@@ -70,7 +71,9 @@ export class World {
   enter() {
     audio.unlock();
     audio.setAmbience(useGameStore.getState().settings.crowd);
-    useWorldStore.getState().setScreen('explore');
+    const w = useWorldStore.getState();
+    net.connect(w.name, w.outfit);
+    w.setScreen('explore');
   }
 
   pause() {
@@ -161,6 +164,8 @@ export class World {
     const now = performance.now();
     const dt = Math.min((now - this.last) / 1000, 0.05);
     this.last = now;
+    // Keep the room updated (and remote players moving) even while inside a minigame.
+    net.tick(dt, { x: this.pos.x, y: this.pos.z, dir: this.dir, moving: this.anim > 0, place: useWorldStore.getState().place });
     if (!this.live) return; // an activity owns the screen; the hall is frozen as left
     this.frame(dt);
   };
@@ -275,10 +280,30 @@ export class World {
     const outfit = OUTFITS[useWorldStore.getState().outfit]?.outfit ?? OUTFITS[0].outfit;
     const frame = this.interactT > 0 ? 1 : this.anim ? 1 + (Math.floor(this.anim) % 4) : 0;
     const sg = this.sprite.getContext('2d')!;
-    sg.clearRect(0, 0, 16, 24);
-    character(sg, outfit, this.interactT > 0 ? 3 : this.dir, frame);
+    // Other players in the room, drawn like us with their own outfit.
+    for (const p of net.peers.values()) {
+      const fx = Math.round(p.x * TILE);
+      const fy = Math.round(p.y * TILE);
+      items.push({
+        y: fy,
+        draw: () => {
+          sg.clearRect(0, 0, 16, 24);
+          character(sg, OUTFITS[p.outfit]?.outfit ?? OUTFITS[0].outfit, p.dir, p.anim ? 1 + (Math.floor(p.anim) % 4) : 0);
+          g.globalAlpha = p.place === 'world' ? 1 : 0.55; // playing a minigame: shown faded where they left
+          g.drawImage(this.sprite, fx - 8, fy - 23);
+          g.globalAlpha = 1;
+        },
+      });
+    }
     const feetY = Math.round(this.pos.z * TILE);
-    items.push({ y: feetY + 0.5, draw: () => g.drawImage(this.sprite, Math.round(this.pos.x * TILE) - 8, feetY - 23) });
+    items.push({
+      y: feetY + 0.5,
+      draw: () => {
+        sg.clearRect(0, 0, 16, 24);
+        character(sg, outfit, this.interactT > 0 ? 3 : this.dir, frame);
+        g.drawImage(this.sprite, Math.round(this.pos.x * TILE) - 8, feetY - 23);
+      },
+    });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
 
@@ -286,6 +311,24 @@ export class World {
     if (screen === 'explore' || screen === 'paused') {
       g.fillStyle = '#05060dad';
       for (const r of ROOMS) if (r.name !== this.room) g.fillRect((r.x0 + 1) * TILE, (r.y0 + 1) * TILE, (r.x1 - r.x0 - 1) * TILE, (r.y1 - r.y0 - 1) * TILE);
+    }
+
+    // Name tags over remote players, in screen pixels so the text stays crisp.
+    if (net.peers.size && (screen === 'explore' || screen === 'paused')) {
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.font = `bold ${Math.max(11, s * 4)}px ui-sans-serif, system-ui, sans-serif`;
+      g.textAlign = 'center';
+      for (const p of net.peers.values()) {
+        const tx = (p.x * TILE - ox) * s;
+        const ty = (p.y * TILE - 27 - oy) * s;
+        const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : 'air hockey'}`;
+        g.fillStyle = '#000000aa';
+        const wdt = g.measureText(label).width + 10;
+        g.fillRect(tx - wdt / 2, ty - s * 4 - 6, wdt, s * 4 + 8);
+        g.fillStyle = '#eaf2ff';
+        g.fillText(label, tx, ty);
+      }
+      g.setTransform(s, 0, 0, s, -ox * s, -oy * s);
     }
 
     // Bouncing arrow over the player when an activity is in range.

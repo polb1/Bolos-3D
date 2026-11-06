@@ -7,19 +7,22 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "server": "node server/server.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.14.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.170.0",
+    "ws": "^8.22.1",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.170.0",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "5.6",
     "vite": "^6.4.5",

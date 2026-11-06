@@ -28,6 +28,9 @@ interface WorldState {
   fade: boolean;
   toast: string | null;
   outfit: number;
+  /** Name shown to other players online. */
+  name: string;
+  setName(n: string): void;
   setScreen(s: WorldScreen): void;
   setPlace(p: Place): void;
   setNearby(id: string | null): void;
@@ -45,6 +48,11 @@ export const useWorldStore = create<WorldState>((set) => ({
   fade: false,
   toast: null,
   outfit: storage.getRaw('outfit', 0),
+  name: storage.getRaw('name', ''),
+  setName: (name) => {
+    storage.set('name', name);
+    set({ name });
+  },
   setScreen: (screen) => set({ screen }),
   setPlace: (place) => set({ place }),
   setNearby: (nearby) => set({ nearby }),

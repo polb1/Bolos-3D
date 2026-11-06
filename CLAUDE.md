@@ -42,10 +42,10 @@ El juego arranca en un centro recreativo 2D visto desde arriba, en pixel art y p
   - La bola no cruza la línea de falta al arrastrar: al llegar a ella sale sola con la velocidad de la mano.
   - `Q`/`E` o la rueda dan un efecto de muñeca previo.
 - **Dificultad alta:** dispersión humana en la suelta y bolos que pueden tambalearse sin caer. Los resultados siempre salen de la física, nunca de un aleatorio sin relación con ella.
-- **Fuera de alcance:** modo online, tienda y torneos de la referencia.
+- **Online:** la base está en `ONLINE.md`: sala por `?sala=`, servidor `npm run server` y jugadores visibles en el local. El juego debe seguir funcionando sin servidor.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (60 tests) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (64 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
 
 ## Pruebas en navegador
 El navegador integrado de la app no tenía WebGL; se probó con Chrome headless + SwiftShader (`--use-angle=swiftshader --enable-unsafe-swiftshader`) y puppeteer-core. En headless los eventos del ratón llegan espaciados y la velocidad del gesto sale falsa. Para medirla bien, envía los eventos por CDP con `Input.dispatchMouseEvent` y un `timestamp` explícito.
