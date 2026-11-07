@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { audio } from '../../audio/AudioEngine';
-import { SwingTracker } from '../../game/SwingTracker';
+import { SwingTracker } from '../../utils/SwingTracker';
 import { clamp } from '../../utils/math';
 import { createRng, gaussian } from '../../utils/random';
 import { net } from '../../net/client';
@@ -9,7 +9,7 @@ import { buildLounge } from '../../world3d/lounge';
 import { dartboard } from '../../world3d/textures';
 import { useWorldStore } from '../../world/worldStore';
 import { aiTarget, apply501, BOARD_R, bedCentre, bounceOut, BULL_Y, DARTS_PER_TURN, fly, launch, LEGS_TO_WIN, OCHE, scoreAt, type DartsMode, type Flight, type Hit, type Vec3 } from './physics';
-import { rulesPoster } from './room';
+import { rulesPoster } from './poster';
 import { useDartsStore, type Opponent } from './store';
 
 /** Comfortable throwing speed (m/s): the arc the player's aim is trained for. */

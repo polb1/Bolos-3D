@@ -1,7 +1,7 @@
-import { BALL, rackPositions } from '../config/constants';
+import { BALL, rackPositions } from '../constants';
 import type { LaunchParams } from '../physics/PhysicsWorld';
-import { clamp } from '../utils/math';
-import { gaussian, type Rng } from '../utils/random';
+import { clamp } from '../../../utils/math';
+import { gaussian, type Rng } from '../../../utils/random';
 import { isSplit } from './match';
 
 /** A computer bowler: how far its release strays from what it aims for. */

@@ -1,29 +1,7 @@
+import { canvas, seeded, tex } from '../utils/canvas';
 import * as THREE from 'three';
 
 /** Procedural textures for the hall (no external image assets, like the rest of the project). */
-
-function canvas(w: number, h: number) {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  return [c, c.getContext('2d')!] as const;
-}
-
-function tex(c: HTMLCanvasElement, repeat?: [number, number]) {
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
-  if (repeat) {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(...repeat);
-  }
-  return t;
-}
-
-function seeded(seed: number) {
-  let s = seed;
-  return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
-}
 
 /** Warm oak plank floor (planks along x, staggered joints). */
 export function woodFloor(repeat: [number, number]) {

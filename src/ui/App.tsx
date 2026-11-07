@@ -1,22 +1,22 @@
 import { useEffect, useRef } from 'react';
 import { audio } from '../audio/AudioEngine';
-import { gameRef } from '../game/instance';
-import { initRapier } from '../physics/PhysicsWorld';
-import { useGameStore } from '../store/useGameStore';
-import { EndPanel } from './EndPanel';
-import { Hud } from './Hud';
+import { gameRef } from '../games/bowling/game/instance';
+import { initRapier } from '../games/bowling/physics/PhysicsWorld';
+import { useGameStore } from '../games/bowling/store/useGameStore';
+import { EndPanel } from '../games/bowling/ui/EndPanel';
+import { Hud } from '../games/bowling/ui/Hud';
 import { LoadingScreen } from './LoadingScreen';
-import { MainMenu } from './MainMenu';
-import { PausePanel } from './PausePanel';
-import { SetupPanel } from './SetupPanel';
+import { MainMenu } from '../games/bowling/ui/MainMenu';
+import { PausePanel } from '../games/bowling/ui/PausePanel';
+import { SetupPanel } from '../games/bowling/ui/SetupPanel';
 import { Fade, WorldUI } from './world/WorldUI';
 import { worldRef } from '../world/instance';
 import { useWorldStore } from '../world/worldStore';
 import { hockeyRef } from '../games/airhockey/instance';
-import { AirHockeyUI } from './airhockey/AirHockeyUI';
+import { AirHockeyUI } from '../games/airhockey/ui/AirHockeyUI';
 import { useHockeyStore } from '../games/airhockey/store';
 import { dartsRef } from '../games/darts/instance';
-import { DartsUI } from './darts/DartsUI';
+import { DartsUI } from '../games/darts/ui/DartsUI';
 
 export function App() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -33,7 +33,7 @@ export function App() {
     (async () => {
       try {
         const [{ Game }, { World }, { AirHockey }, { Darts }] = await Promise.all([
-          import('../game/Game'),
+          import('../games/bowling/game/Game'),
           useWorldStore.getState().style === 'pixel' ? import('../world/World') : import('../world3d/World'),
           import('../games/airhockey/AirHockey'),
           import('../games/darts/Darts'),

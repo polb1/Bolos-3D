@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { audio } from '../audio/AudioEngine';
-import { BALL_COLORS, WOODS, type Settings } from '../config/settings';
+import { audio } from '../../../audio/AudioEngine';
+import { BALL_COLORS, WOODS, type Settings } from '../../../config/settings';
 import { gameRef } from '../game/instance';
 import { useGameStore } from '../store/useGameStore';
 

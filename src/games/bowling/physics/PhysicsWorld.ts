@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
-import { BALL, LANE, PHYSICS, PIN, PIT_Z, rackPositions } from '../config/constants';
-import { gaussian, range, type Rng } from '../utils/random';
+import { BALL, LANE, PHYSICS, PIN, PIT_Z, rackPositions } from '../constants';
+import { gaussian, range, type Rng } from '../../../utils/random';
 import { pinHullPoints } from './pinShape';
 
 export type Vec3 = { x: number; y: number; z: number };

@@ -1,7 +1,7 @@
 import { useHockeyStore } from '../games/airhockey/store';
 import { useDartsStore } from '../games/darts/store';
 import { audio } from '../audio/AudioEngine';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../games/bowling/store/useGameStore';
 import { ACTIVITIES, nearestActivity, type Activity } from './activities';
 import { resolve, type Box } from './collide';
 import { drawStatic, MAP_H, MAP_W, PROPS, ROOMS, roomAt, solids, SPAWN } from './map';

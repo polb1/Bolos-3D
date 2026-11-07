@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { audio } from '../../audio/AudioEngine';
-import { dartsRef } from '../../games/darts/instance';
-import { DARTS_PER_TURN, LEGS_TO_WIN, type DartsMode } from '../../games/darts/physics';
-import { useDartsStore, type Opponent } from '../../games/darts/store';
-import { useNetStore } from '../../net/client';
-import { worldRef } from '../../world/instance';
-import { MuteButton } from '../MuteButton';
+import { audio } from '../../../audio/AudioEngine';
+import { dartsRef } from '../instance';
+import { DARTS_PER_TURN, LEGS_TO_WIN, type DartsMode } from '../physics';
+import { useDartsStore, type Opponent } from '../store';
+import { useNetStore } from '../../../net/client';
+import { worldRef } from '../../../world/instance';
+import { MuteButton } from '../../../ui/MuteButton';
 
 const click = (fn: () => void) => () => {
   audio.unlock();

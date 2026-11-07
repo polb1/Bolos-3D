@@ -1,7 +1,7 @@
 import { useLobbyStore } from '../../world3d/hockeyLobby';
 import { useRef, type PointerEvent as RPointerEvent } from 'react';
 import { audio } from '../../audio/AudioEngine';
-import { useGameStore } from '../../store/useGameStore';
+import { useGameStore } from '../../games/bowling/store/useGameStore';
 import { ACTIVITIES } from '../../world/activities';
 import { worldRef } from '../../world/instance';
 import { OUTFITS, useWorldStore, type WorldScreen } from '../../world/worldStore';

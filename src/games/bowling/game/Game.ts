@@ -1,22 +1,22 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { audio } from '../audio/AudioEngine';
-import { BALL, HEAD_PIN_Z, LANE, PIT_Z } from '../config/constants';
-import { BALL_COLORS, LB_TO_KG, QUALITY, type Settings } from '../config/settings';
+import { audio } from '../../../audio/AudioEngine';
+import { BALL, HEAD_PIN_Z, LANE, PIT_Z } from '../constants';
+import { BALL_COLORS, LB_TO_KG, QUALITY, type Settings } from '../../../config/settings';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { Alley } from '../scene/Alley';
 import { Monitor } from '../scene/Monitor';
 import { createBallMesh } from '../scene/pinMesh';
 import { currentScore, turnState } from '../scoring/scoring';
 import { useGameStore } from '../store/useGameStore';
-import { useWorldStore } from '../world/worldStore';
-import { clamp, damp } from '../utils/math';
-import { createRng, gaussian } from '../utils/random';
+import { useWorldStore } from '../../../world/worldStore';
+import { clamp, damp } from '../../../utils/math';
+import { createRng, gaussian } from '../../../utils/random';
 import { Input } from './Input';
 import { aiThrow, LADDER } from './ai';
 import { describeRoll, nextPlayer } from './match';
 import { PinRack } from './PinRack';
-import { SwingTracker } from './SwingTracker';
+import { SwingTracker } from '../../../utils/SwingTracker';
 
 const REST_Z = 1.8; // where the ball waits on the approach
 const MAX_BACK_Z = 3.6; // furthest the ball can be pulled back

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { BALL } from '../config/constants';
+import { BALL } from '../constants';
 import { initRapier, PhysicsWorld, type LaunchParams } from './PhysicsWorld';
 
 function roll(p: Omit<LaunchParams, 'mass'>, onImpact?: () => void) {
@@ -57,7 +57,7 @@ describe('real-world variation', () => {
   beforeAll(() => initRapier());
 
   it('is reproducible for a given seed and varies between seeds', async () => {
-    const { createRng } = await import('../utils/random');
+    const { createRng } = await import('../../../utils/random');
     const run = (seed: number) => {
       const w = new PhysicsWorld();
       w.setVariation(createRng(seed));
@@ -74,7 +74,7 @@ describe('real-world variation', () => {
   });
 
   it('an untouched varied rack still stands', async () => {
-    const { createRng } = await import('../utils/random');
+    const { createRng } = await import('../../../utils/random');
     const w = new PhysicsWorld();
     w.setVariation(createRng(42));
     w.resetRack();

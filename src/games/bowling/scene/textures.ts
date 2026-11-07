@@ -1,20 +1,9 @@
-import { WOODS } from '../config/settings';
+import { canvas, seeded } from '../../../utils/canvas';
+import { WOODS } from '../../../config/settings';
 import * as THREE from 'three';
-import { LANE } from '../config/constants';
+import { LANE } from '../constants';
 
 /** All textures are drawn procedurally on canvases: no external image assets. */
-
-function canvas(w: number, h: number) {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  return [c, c.getContext('2d')!] as const;
-}
-
-function seeded(seed: number) {
-  let s = seed;
-  return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
-}
 
 /** Maple/pine boards running along the lane; repeats along its length. */
 export function laneWoodTexture(tone: string, anisotropy: number) {

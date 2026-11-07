@@ -1,4 +1,4 @@
-import { PIN } from '../config/constants';
+import { PIN } from '../constants';
 
 let cached: Float32Array | null = null;
 

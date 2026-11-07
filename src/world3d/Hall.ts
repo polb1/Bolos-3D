@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { HEAD_PIN_Z, rackPositions } from '../config/constants';
-import { createBallMesh, createPinMesh } from '../scene/pinMesh';
-import { laneWoodTexture } from '../scene/textures';
+import { HEAD_PIN_Z, rackPositions } from '../games/bowling/constants';
+import { createBallMesh, createPinMesh } from '../games/bowling/scene/pinMesh';
+import { laneWoodTexture } from '../games/bowling/scene/textures';
 import { box, type Box } from '../world/collide';
 import * as P from './props';
 import { HOCKEY_TABLES } from './activities';

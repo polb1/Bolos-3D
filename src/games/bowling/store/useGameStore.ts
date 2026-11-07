@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { COIN_REWARD, COIN_THRESHOLD, DEFAULT_SETTINGS, type Settings } from '../config/settings';
+import { COIN_REWARD, COIN_THRESHOLD, DEFAULT_SETTINGS, type Settings } from '../../../config/settings';
 import { LADDER } from '../game/ai';
 import type { PlayerGame } from '../game/match';
 import { currentScore, gameStats, type Roll } from '../scoring/scoring';
-import { storage } from '../utils/storage';
+import { storage } from '../../../utils/storage';
 
 export type Screen = 'loading' | 'menu' | 'setup' | 'playing' | 'paused' | 'end';
 export type Phase = 'aim' | 'grab' | 'rolling' | 'settling' | 'sweep';

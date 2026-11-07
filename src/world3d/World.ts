@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { audio } from '../audio/AudioEngine';
 import { QUALITY } from '../config/settings';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../games/bowling/store/useGameStore';
 import { damp } from '../utils/math';
 import { ACTIVITIES, nearestActivity, type Activity } from './activities';
 import { Avatar } from './Avatar';

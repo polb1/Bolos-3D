@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { BALL, rackPositions } from '../config/constants';
+import { BALL, rackPositions } from '../constants';
 import { initRapier, PhysicsWorld } from '../physics/PhysicsWorld';
 import { currentScore, isGameOver, turnState, type Roll } from '../scoring/scoring';
-import { createRng } from '../utils/random';
+import { createRng } from '../../../utils/random';
 import { aiThrow, LADDER, type Rival } from './ai';
 
 /** Plays a whole game headless: every ball goes through the physics. */

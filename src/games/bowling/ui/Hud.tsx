@@ -1,7 +1,7 @@
 import { gameRef } from '../game/instance';
 import { turnState } from '../scoring/scoring';
 import { useGameStore } from '../store/useGameStore';
-import { MuteButton } from './MuteButton';
+import { MuteButton } from '../../../ui/MuteButton';
 import { ScoreSheet } from './ScoreSheet';
 import { TouchControls } from './TouchControls';
 

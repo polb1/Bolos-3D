@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { audio } from '../audio/AudioEngine';
-import { BALL_COLORS, WOODS } from '../config/settings';
+import { audio } from '../../../audio/AudioEngine';
+import { BALL_COLORS, WOODS } from '../../../config/settings';
 import { gameRef } from '../game/instance';
-import { worldRef } from '../world/instance';
+import { worldRef } from '../../../world/instance';
 import { useGameStore } from '../store/useGameStore';
-import { MuteButton } from './MuteButton';
+import { MuteButton } from '../../../ui/MuteButton';
 
 export function MainMenu() {
   const settings = useGameStore((s) => s.settings);

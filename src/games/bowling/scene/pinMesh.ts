@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BALL, PIN } from '../config/constants';
+import { BALL, PIN } from '../constants';
 import { ballTexture, pinTexture } from './textures';
 
 let pinGeo: THREE.BufferGeometry | null = null;

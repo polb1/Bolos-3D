@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { HEAD_PIN_Z, LANE, PIN, PIT_Z, rackPositions } from '../config/constants';
+import { HEAD_PIN_Z, LANE, PIN, PIT_Z, rackPositions } from '../constants';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 import { createPinMesh } from '../scene/pinMesh';
-import { easeInOut } from '../utils/math';
+import { easeInOut } from '../../../utils/math';
 
 const RACK_Z = HEAD_PIN_Z - 0.4; // centre of the triangle
 const PARKED_Y = 1.9; // machinery rests out of sight behind the masking unit

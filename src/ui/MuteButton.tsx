@@ -1,4 +1,4 @@
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../games/bowling/store/useGameStore';
 
 export function MuteButton() {
   const muted = useGameStore((s) => s.muted);

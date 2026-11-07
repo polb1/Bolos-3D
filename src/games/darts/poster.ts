@@ -1,20 +1,4 @@
-import * as THREE from 'three';
-
-/** Procedural rules poster for the darts room. */
-
-function canvas(w: number, h: number) {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  return [c, c.getContext('2d')!] as const;
-}
-
-function tex(c: HTMLCanvasElement) {
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
-  return t;
-}
+import { canvas, tex } from '../../utils/canvas';
 
 /** Rules poster for the wall: drawn big enough to read when the camera zooms onto it. */
 export function rulesPoster() {

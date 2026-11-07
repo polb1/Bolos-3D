@@ -1,4 +1,4 @@
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../games/bowling/store/useGameStore';
 
 export function LoadingScreen() {
   const error = useGameStore((s) => s.loadError);

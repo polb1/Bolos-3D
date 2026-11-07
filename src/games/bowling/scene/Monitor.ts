@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PIN_SPACING, rackPositions } from '../config/constants';
+import { PIN_SPACING, rackPositions } from '../constants';
 
 const W = 960;
 const H = 540;

@@ -1,7 +1,7 @@
-import { darkWood, plaster, wainscot } from '../world3d/textures';
+import { darkWood, plaster, wainscot } from '../../../world3d/textures';
 import * as THREE from 'three';
-import { HEAD_PIN_Z, LANE, PIT_Z, rackPositions } from '../config/constants';
-import type { QualityPreset, Settings } from '../config/settings';
+import { HEAD_PIN_Z, LANE, PIT_Z, rackPositions } from '../constants';
+import type { QualityPreset, Settings } from '../../../config/settings';
 import { carpetTexture, laneWoodTexture, maskingTexture } from './textures';
 import { createPinGeometry, createPinMaterial } from './pinMesh';
 
