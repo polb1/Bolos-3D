@@ -39,15 +39,15 @@ export interface Activity {
 
 /** The 3D hall's interactive spots (floor metres). Adding a game = one entry here + its module. */
 export const ACTIVITIES: Activity[] = [
-  { id: 'bowling', name: 'Bolera', x: -10, z: -4.6, radius: 2.2, place: 'bowling', color: '#d8f24a' },
-  { id: 'pool-1', name: 'Billar', x: 7.5, z: -8.9, radius: 1.9, place: null, color: '#4fb6ff' },
-  { id: 'pool-2', name: 'Billar', x: 12.5, z: -8.9, radius: 1.9, place: null, color: '#4fb6ff' },
-  { id: 'airhockey-1', name: 'Air Hockey · contra la IA', x: 13.3, z: 1.05, radius: 0.75, place: 'airhockey', color: '#ff4f6e' },
-  { id: 'airhockey-2', name: 'Air Hockey · contra la IA', x: 13.3, z: 5.45, radius: 0.75, place: 'airhockey', color: '#ff4f6e' },
-  { id: 'foosball-1', name: 'Futbolín', x: -1.6, z: 1.2, radius: 1.6, place: null, color: '#7dffb0' },
-  { id: 'foosball-2', name: 'Futbolín', x: 2.6, z: 1.2, radius: 1.6, place: null, color: '#7dffb0' },
-  { id: 'darts', name: 'Dardos', x: -13.2, z: 2.5, radius: 2.4, place: 'darts', color: '#ffb84f' },
-  { id: 'arcade', name: 'Recreativas', x: 13.4, z: 10.1, radius: 2.4, place: null, color: '#b06bff' },
+  { id: 'bowling', name: 'Bolera', x: -10, z: -4.6, radius: 2.2, place: 'bowling', color: '#e8b04a' },
+  { id: 'pool-1', name: 'Billar', x: 7.5, z: -8.9, radius: 1.9, place: null, color: '#7fb0a0' },
+  { id: 'pool-2', name: 'Billar', x: 12.5, z: -8.9, radius: 1.9, place: null, color: '#7fb0a0' },
+  { id: 'airhockey-1', name: 'Air Hockey · contra la IA', x: 13.3, z: 1.05, radius: 0.75, place: 'airhockey', color: '#d9705a' },
+  { id: 'airhockey-2', name: 'Air Hockey · contra la IA', x: 13.3, z: 5.45, radius: 0.75, place: 'airhockey', color: '#d9705a' },
+  { id: 'foosball-1', name: 'Futbolín', x: -1.6, z: 1.2, radius: 1.6, place: null, color: '#8fb86a' },
+  { id: 'foosball-2', name: 'Futbolín', x: 2.6, z: 1.2, radius: 1.6, place: null, color: '#8fb86a' },
+  { id: 'darts', name: 'Dardos', x: -13.2, z: 2.5, radius: 2.4, place: 'darts', color: '#e0a050' },
+  { id: 'arcade', name: 'Recreativas', x: 13.4, z: 10.1, radius: 2.4, place: null, color: '#b08ac0' },
 ];
 
 /** Closest activity whose radius contains the point, or null. */

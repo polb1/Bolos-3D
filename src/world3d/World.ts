@@ -7,7 +7,7 @@ import { damp } from '../utils/math';
 import { ACTIVITIES, nearestActivity, type Activity } from './activities';
 import { Avatar } from './Avatar';
 import { resolve } from '../world/collide';
-import { Hall, SPAWN } from './Hall';
+import { H as CEILING, Hall, SPAWN } from './Hall';
 import { OUTFITS, useWorldStore } from '../world/worldStore';
 import { useHockeyStore } from '../games/airhockey/store';
 import { useDartsStore } from '../games/darts/store';
@@ -78,10 +78,10 @@ export class World {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatio));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1.0;
     host.appendChild(this.renderer.domElement);
 
-    this.scene.background = new THREE.Color(0x05070f);
+    this.scene.background = new THREE.Color(0x1a120c);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.35;
@@ -453,7 +453,11 @@ export class World {
   // ------------------------------------------------------------------ loop
   private loop = () => {
     this.raf = requestAnimationFrame(this.loop);
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    this.frame(Math.min(this.clock.getDelta(), 0.05));
+  };
+
+  /** One update + render step (also called by hand in browser tests, where rAF may be throttled). */
+  frame(dt: number) {
     // Keep the room updated (and remote players moving) even while inside a minigame.
     const sp = this.vel.length();
     net.tick(dt, { x: this.pos.x + NET_OFFSET, y: this.pos.z + NET_OFFSET, dir: 0, moving: sp > 0.2, place: useWorldStore.getState().place });
@@ -473,7 +477,7 @@ export class World {
     this.updateMarkers(near);
     this.updateCamera(dt, w.screen);
     this.renderer.render(this.scene, this.camera);
-  };
+  }
 
   private move(dt: number) {
     const k = this.keys;
@@ -516,7 +520,7 @@ export class World {
     if (screen === 'title' || screen === 'loading' || screen === 'character' || screen === 'controls' || screen === 'stats') {
       // Slow cinematic orbit around the hall behind the menus.
       const t = this.time * 0.07;
-      this.camera.position.set(Math.sin(t) * 9, 4.2, Math.cos(t) * 7);
+      this.camera.position.set(Math.sin(t) * 9, 2.3, Math.cos(t) * 7); // below the pendant lamps
       this.camera.lookAt(0, 1, -1);
       if (screen === 'character') {
         this.camera.position.set(this.pos.x - Math.sin(this.facing) * -2.4, 1.4, this.pos.z + Math.cos(this.facing) * 2.4);
@@ -535,7 +539,7 @@ export class World {
     if (this.snapCam) this.camDist = want;
     this.camDist += (want - this.camDist) * (want < this.camDist ? 1 : damp(6, dt));
     const camPos = pivot.clone().addScaledVector(dir, this.camDist);
-    camPos.y = Math.min(camPos.y, 4.7);
+    camPos.y = Math.min(camPos.y, CEILING - 0.3);
     if (this.snapCam) this.camera.position.copy(camPos);
     else this.camera.position.lerp(camPos, damp(18, dt));
     this.snapCam = false;

@@ -25,76 +25,173 @@ function seeded(seed: number) {
   return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
 }
 
-/** Classic arcade carpet: dark base with scattered neon shapes. */
-export function arcadeCarpet(repeat: [number, number]) {
+/** Warm oak plank floor (planks along x, staggered joints). */
+export function woodFloor(repeat: [number, number]) {
   const [c, g] = canvas(512, 512);
-  const rnd = seeded(5);
-  g.fillStyle = '#0d1022';
-  g.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 4000; i++) {
-    g.fillStyle = `rgba(255,255,255,${rnd() * 0.04})`;
-    g.fillRect(rnd() * 512, rnd() * 512, 2, 2);
-  }
-  const colors = ['#d8f24a', '#4fb6ff', '#ff4fd8', '#ffb84f', '#7dffd9'];
-  for (let i = 0; i < 60; i++) {
-    g.strokeStyle = colors[i % colors.length];
-    g.globalAlpha = 0.28;
-    g.lineWidth = 3;
-    const x = rnd() * 512;
-    const y = rnd() * 512;
-    const s = 8 + rnd() * 14;
-    g.beginPath();
-    const kind = i % 4;
-    if (kind === 0) g.arc(x, y, s, 0, Math.PI * 2);
-    else if (kind === 1) g.rect(x - s, y - s, s * 1.4, s * 1.4);
-    else if (kind === 2) {
-      g.moveTo(x, y - s);
-      g.lineTo(x + s, y + s);
-      g.lineTo(x - s, y + s);
-      g.closePath();
-    } else {
-      g.moveTo(x - s, y);
-      for (let k = 0; k < 4; k++) g.lineTo(x - s + (k + 1) * (s / 2), y + (k % 2 ? -s / 2 : s / 2));
+  const rnd = seeded(7);
+  const rows = 10;
+  const h = 512 / rows;
+  for (let r = 0; r < rows; r++) {
+    let x = -rnd() * 300;
+    while (x < 512) {
+      const w = 320 + rnd() * 260;
+      const l = 34 + rnd() * 5;
+      g.fillStyle = `hsl(${30 + rnd() * 4},${34 + rnd() * 8}%,${l}%)`;
+      g.fillRect(x, r * h, w, h);
+      // Grain.
+      for (let k = 0; k < 14; k++) {
+        g.strokeStyle = `rgba(60,30,10,${0.06 + rnd() * 0.1})`;
+        g.lineWidth = 1 + rnd() * 1.5;
+        const y = r * h + rnd() * h;
+        g.beginPath();
+        g.moveTo(x, y);
+        for (let xx = 0; xx <= w; xx += 24) g.lineTo(x + xx, y + Math.sin((xx + k * 40) * 0.02) * 2);
+        g.stroke();
+      }
+      g.fillStyle = 'rgba(30,15,5,0.55)';
+      g.fillRect(x, r * h, 2, h);
+      x += w;
     }
+    g.fillStyle = 'rgba(30,15,5,0.5)';
+    g.fillRect(0, r * h, 512, 2);
+  }
+  // Wrap the left edge onto the right so joints tile.
+  return tex(c, repeat);
+}
+
+/** Warm limewash plaster for the upper walls. */
+export function plaster(repeat: [number, number]) {
+  const [c, g] = canvas(256, 256);
+  const rnd = seeded(11);
+  g.fillStyle = '#e9dcc6';
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = rnd() < 0.5 ? `rgba(255,250,240,${rnd() * 0.12})` : `rgba(150,120,90,${rnd() * 0.07})`;
+    const r = 4 + rnd() * 18;
+    g.beginPath();
+    g.arc(rnd() * 256, rnd() * 256, r, 0, Math.PI * 2);
+    g.fill();
+  }
+  return tex(c, repeat);
+}
+
+/** Wood panelling (wainscot) for the lower walls. */
+export function wainscot(repeat: [number, number]) {
+  const [c, g] = canvas(256, 256);
+  g.fillStyle = '#5a3720';
+  g.fillRect(0, 0, 256, 256);
+  for (let x = 0; x < 256; x += 64) {
+    g.fillStyle = '#4a2c18';
+    g.fillRect(x + 8, 20, 48, 216);
+    g.fillStyle = 'rgba(255,220,180,0.08)';
+    g.fillRect(x + 8, 20, 48, 3);
+    g.fillRect(x + 8, 20, 3, 216);
+  }
+  g.fillStyle = '#6b4428';
+  g.fillRect(0, 0, 256, 12);
+  return tex(c, repeat);
+}
+
+/** Old red brick for the accent wall behind the bar. */
+export function brick(repeat: [number, number]) {
+  const [c, g] = canvas(256, 256);
+  const rnd = seeded(3);
+  g.fillStyle = '#cdbba3';
+  g.fillRect(0, 0, 256, 256);
+  const bh = 32;
+  for (let r = 0; r < 8; r++)
+    for (let k = -1; k < 4; k++) {
+      const x = k * 64 + (r % 2 ? 32 : 0);
+      g.fillStyle = `hsl(${10 + rnd() * 12},${40 + rnd() * 15}%,${30 + rnd() * 12}%)`;
+      g.fillRect(x + 2, r * bh + 2, 60, bh - 4);
+    }
+  return tex(c, repeat);
+}
+
+/** Woven rug with a border and a simple geometric centre. */
+export function rug(base: string, border: string, accent: string) {
+  const [c, g] = canvas(512, 340);
+  g.fillStyle = border;
+  g.fillRect(0, 0, 512, 340);
+  g.fillStyle = base;
+  g.fillRect(26, 26, 460, 288);
+  g.strokeStyle = accent;
+  g.lineWidth = 6;
+  g.strokeRect(44, 44, 424, 252);
+  g.lineWidth = 4;
+  for (let i = 0; i < 5; i++) {
+    const s = 30 + i * 22;
+    g.beginPath();
+    g.moveTo(256, 170 - s);
+    g.lineTo(256 + s * 1.4, 170);
+    g.lineTo(256, 170 + s);
+    g.lineTo(256 - s * 1.4, 170);
+    g.closePath();
     g.stroke();
   }
-  g.globalAlpha = 1;
-  return tex(c, repeat);
+  const rnd = seeded(17);
+  for (let i = 0; i < 6000; i++) {
+    g.fillStyle = `rgba(${rnd() < 0.5 ? '255,255,255' : '0,0,0'},${rnd() * 0.06})`;
+    g.fillRect(rnd() * 512, rnd() * 340, 2, 2);
+  }
+  return tex(c);
 }
 
-/** Polished tiles for the bar area. */
-export function tiles(repeat: [number, number]) {
-  const [c, g] = canvas(256, 256);
-  for (let y = 0; y < 2; y++)
-    for (let x = 0; x < 2; x++) {
-      g.fillStyle = (x + y) % 2 ? '#1c1f2b' : '#2a2e3d';
-      g.fillRect(x * 128, y * 128, 128, 128);
-    }
-  g.strokeStyle = '#0a0b10';
-  g.lineWidth = 3;
-  g.strokeRect(0, 0, 256, 256);
+/** A simple painting: soft landscape bands, so the walls have something to look at. */
+export function painting(seed: number) {
+  const [c, g] = canvas(256, 192);
+  const rnd = seeded(seed);
+  const hue = Math.floor(rnd() * 360);
+  const sky = g.createLinearGradient(0, 0, 0, 192);
+  sky.addColorStop(0, `hsl(${hue},45%,72%)`);
+  sky.addColorStop(1, `hsl(${(hue + 30) % 360},55%,82%)`);
+  g.fillStyle = sky;
+  g.fillRect(0, 0, 256, 192);
+  g.fillStyle = `hsl(${(hue + 40) % 360},60%,85%)`;
   g.beginPath();
-  g.moveTo(128, 0);
-  g.lineTo(128, 256);
-  g.moveTo(0, 128);
-  g.lineTo(256, 128);
-  g.stroke();
-  return tex(c, repeat);
+  g.arc(60 + rnd() * 140, 50 + rnd() * 30, 18 + rnd() * 10, 0, Math.PI * 2);
+  g.fill();
+  for (let band = 0; band < 3; band++) {
+    g.fillStyle = `hsl(${(hue + 90 + band * 20) % 360},${30 + band * 8}%,${55 - band * 13}%)`;
+    g.beginPath();
+    g.moveTo(0, 192);
+    const base = 100 + band * 30;
+    for (let x = 0; x <= 256; x += 16) g.lineTo(x, base + Math.sin(x * 0.03 + rnd() * 6) * (14 - band * 3));
+    g.lineTo(256, 192);
+    g.fill();
+  }
+  return tex(c);
 }
 
-/** Acoustic wall panels with a subtle vertical rhythm. */
-export function wallPanels(repeat: [number, number]) {
-  const [c, g] = canvas(256, 256);
-  const grd = g.createLinearGradient(0, 0, 0, 256);
-  grd.addColorStop(0, '#141a33');
-  grd.addColorStop(1, '#0b0f20');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 256, 256);
-  g.fillStyle = 'rgba(0,0,0,0.35)';
-  for (let x = 0; x < 256; x += 64) g.fillRect(x, 0, 3, 256);
-  g.fillStyle = 'rgba(255,255,255,0.03)';
-  for (let x = 4; x < 256; x += 64) g.fillRect(x, 0, 2, 256);
-  return tex(c, repeat);
+/** Painted wooden signboard text (no glow): cream letters on stained wood. */
+export function signBoard(text: string) {
+  const font = 'bold 86px Georgia, "Times New Roman", serif';
+  const [m] = canvas(1, 1);
+  const mg = m.getContext('2d')!;
+  mg.font = font;
+  const w = Math.ceil(mg.measureText(text).width) + 110;
+  const [c, g] = canvas(w, 150);
+  g.fillStyle = '#3d2414';
+  g.fillRect(0, 0, w, 150);
+  const rnd = seeded(text.length * 31);
+  for (let i = 0; i < 40; i++) {
+    g.strokeStyle = `rgba(20,8,2,${0.1 + rnd() * 0.2})`;
+    g.lineWidth = 1 + rnd() * 2;
+    const y = rnd() * 150;
+    g.beginPath();
+    g.moveTo(0, y);
+    g.lineTo(w, y + (rnd() - 0.5) * 6);
+    g.stroke();
+  }
+  g.strokeStyle = '#c9a46a';
+  g.lineWidth = 5;
+  g.strokeRect(12, 12, w - 24, 126);
+  g.font = font;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillStyle = '#f1e2c2';
+  g.fillText(text, w / 2, 80);
+  return { texture: tex(c), aspect: w / 150 };
 }
 
 /** Wood for bars, tables and frames. */
@@ -113,30 +210,6 @@ export function darkWood(repeat: [number, number] = [1, 1]) {
     g.stroke();
   }
   return tex(c, repeat);
-}
-
-/** Glowing neon lettering on a transparent background. */
-export function neonText(text: string, color: string, font = 'bold 120px "Segoe UI", system-ui, sans-serif') {
-  const [m] = canvas(1, 1);
-  const mg = m.getContext('2d')!;
-  mg.font = font;
-  const w = Math.ceil(mg.measureText(text).width) + 120;
-  const [c, g] = canvas(w, 220);
-  g.font = font;
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.shadowColor = color;
-  for (const blur of [40, 20, 8]) {
-    g.shadowBlur = blur;
-    g.fillStyle = color;
-    g.fillText(text, w / 2, 110);
-  }
-  g.shadowBlur = 0;
-  g.fillStyle = '#ffffff';
-  g.globalAlpha = 0.85;
-  g.fillText(text, w / 2, 110);
-  const t = tex(c);
-  return { texture: t, aspect: w / 220 };
 }
 
 /** Regulation dartboard face: 20 sectors, doubles, trebles and bull. */
@@ -261,17 +334,6 @@ export function blobShadow() {
   const [c, g] = canvas(128, 128);
   const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
   grd.addColorStop(0, 'rgba(0,0,0,0.55)');
-  grd.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-}
-
-/** Soft light pool painted on the floor under lamps and signs. */
-export function lightPool(color: string) {
-  const [c, g] = canvas(128, 128);
-  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grd.addColorStop(0, color);
   grd.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = grd;
   g.fillRect(0, 0, 128, 128);

@@ -6,9 +6,9 @@ export function LoadingScreen() {
     <div className="screen">
       <div className="panel">
         <h1 className="game-title">
-          BOLERA <span>3D</span>
+          VIRTUAL <span>ARCADE</span>
         </h1>
-        <p className="tagline">{error ? 'Algo ha fallado' : 'Encerando la pista y colocando los bolos…'}</p>
+        <p className="tagline">{error ? 'Algo ha fallado' : 'Encendiendo las lámparas y colocando las mesas…'}</p>
         {error ? <p className="error-text">{error}</p> : <div className="loading-bar"><i /></div>}
       </div>
     </div>
