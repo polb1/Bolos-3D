@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { audio } from '../../../audio/AudioEngine';
+import { click, useEsc } from '../../../ui/common';
 import { dartsRef } from '../instance';
 import { DARTS_PER_TURN, LEGS_TO_WIN, type DartsMode } from '../physics';
 import { useDartsStore, type Opponent } from '../store';
@@ -7,24 +6,10 @@ import { useNetStore } from '../../../net/client';
 import { worldRef } from '../../../world/instance';
 import { MuteButton } from '../../../ui/MuteButton';
 
-const click = (fn: () => void) => () => {
-  audio.unlock();
-  audio.ui();
-  fn();
-};
-
 const start = (m: DartsMode, o: Opponent = 'solo') => click(() => dartsRef.current?.start(m, o));
 const toMenu = () => (dartsRef.current ? dartsRef.current.quit() : useDartsStore.getState().set({ screen: 'menu', poster: false }));
 const closePoster = () => dartsRef.current?.setPoster(false);
 const LEVELS = ['Fácil', 'Media', 'Experta'];
-
-function useEsc(fn: () => void) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.code === 'Escape' && fn();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [fn]);
-}
 
 function Menu() {
   const level = useDartsStore((s) => s.level);

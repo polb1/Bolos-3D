@@ -1,16 +1,10 @@
+import { click } from '../../../ui/common';
 import { useEffect, type ReactNode } from 'react';
-import { audio } from '../../../audio/AudioEngine';
 import { hockeyRef } from '../instance';
 import { MATCH_TIME, type Mode } from '../rules';
 import { useHockeyStore, type HockeySettings, type OnlineMatch } from '../store';
 import { worldRef } from '../../../world/instance';
 import { MuteButton } from '../../../ui/MuteButton';
-
-const click = (fn: () => void) => () => {
-  audio.unlock();
-  audio.ui();
-  fn();
-};
 
 const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 

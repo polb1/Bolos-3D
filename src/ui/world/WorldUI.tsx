@@ -1,3 +1,4 @@
+import { click } from '../common';
 import { useLobbyStore } from '../../world3d/hockeyLobby';
 import { useRef, type PointerEvent as RPointerEvent } from 'react';
 import { audio } from '../../audio/AudioEngine';
@@ -8,12 +9,6 @@ import { OUTFITS, useWorldStore, type WorldScreen } from '../../world/worldStore
 import { MuteButton } from '../MuteButton';
 import { MAX_NAME } from '../../net/protocol';
 import { useNetStore } from '../../net/client';
-
-const click = (fn: () => void) => () => {
-  audio.unlock();
-  audio.ui();
-  fn();
-};
 
 function Back({ to = 'title' }: { to?: WorldScreen }) {
   const setScreen = useWorldStore((s) => s.setScreen);
