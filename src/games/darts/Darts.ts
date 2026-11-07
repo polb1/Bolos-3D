@@ -4,10 +4,12 @@ import { audio } from '../../audio/AudioEngine';
 import { SwingTracker } from '../../game/SwingTracker';
 import { clamp } from '../../utils/math';
 import { createRng, gaussian } from '../../utils/random';
+import { net } from '../../net/client';
+import { dartboard } from '../../world3d/textures';
 import { useWorldStore } from '../../world/worldStore';
-import { apply501, BOARD_R, BULL_Y, DARTS_PER_TURN, fly, launch, OCHE, scoreAt, type DartsMode, type Flight, type Hit, type Vec3 } from './physics';
-import { useDartsStore } from './store';
-import { buildRoom } from './room';
+import { aiTarget, apply501, BOARD_R, bedCentre, BULL_Y, DARTS_PER_TURN, fly, launch, LEGS_TO_WIN, OCHE, scoreAt, type DartsMode, type Flight, type Hit, type Vec3 } from './physics';
+import { rulesPoster } from './room';
+import { useDartsStore, type Opponent } from './store';
 
 /** Comfortable throwing speed (m/s): the arc the player's aim is trained for. */
 const IDEAL = 6;
@@ -29,6 +31,15 @@ interface Flying {
   hit: Hit;
 }
 
+/** AI aim error (m, per axis) for easy / medium / expert: about 50, 30 and 20 darts per 501 leg (simulated). */
+const AI_SIGMA = [0.028, 0.014, 0.0075];
+const AI_NAMES = ['IA Fácil', 'IA Media', 'IA Experta'];
+const AI_HAND: Vec3 = { x: 0.04, y: 1.62, z: OCHE + 0.2 };
+const RIVAL_COLOR = 0xff5a5a;
+
+/** Online darts messages (relayed by the room server, addressed with `to`). */
+type DartsMsg = { k: 'dseek' } | { k: 'dstart'; to: string } | { k: 'dthrow'; to: string; f: number[]; v: number[] } | { k: 'dquit'; to: string };
+
 /** A steel-tip dart pointing along -z: tip, tungsten barrel, shaft, flights. */
 function makeDart(color: number) {
   const g = new THREE.Group();
@@ -40,8 +51,7 @@ function makeDart(color: number) {
     g.add(m);
     return m;
   };
-  // Soft (plastic) tip for the electronic board; its end is the origin.
-  add(new THREE.ConeGeometry(0.0022, 0.026, 10), new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 }), -0.013);
+  add(new THREE.ConeGeometry(0.0012, 0.03, 8), new THREE.MeshStandardMaterial({ color: 0xb8bcc4, metalness: 0.9, roughness: 0.3 }), -0.015); // tip (its end is the origin)
   add(new THREE.CylinderGeometry(0.0034, 0.0029, 0.05, 14), new THREE.MeshStandardMaterial({ color: 0x6d7078, metalness: 0.85, roughness: 0.35 }), 0.025);
   add(new THREE.CylinderGeometry(0.0016, 0.0019, 0.04, 8), new THREE.MeshStandardMaterial({ color: 0x15151a, roughness: 0.5 }), 0.07);
   const flight = new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide });
@@ -80,7 +90,13 @@ export class Darts {
   private raf = 0;
   private last = performance.now();
   private bannerN = 0;
-  private display: (big: string, small: string) => void = () => {};
+  /** AI: seconds until its next dart. */
+  private aiT = 0;
+  /** Online: rival id, throws waiting to be shown, and seek announce timer. */
+  private rival: string | null = null;
+  private queue: { f: Vec3; v: Vec3 }[] = [];
+  private seekT = 0;
+  private firstStarter: 0 | 1 = 0;
   private poster!: THREE.Mesh;
   /** 0 = at the oche, 1 = in front of the rules poster. */
   private view = 0;
@@ -104,6 +120,7 @@ export class Darts {
     this.hand = makeDart(0xd8f24a);
     this.scene.add(this.hand);
     this.restHand();
+    net.onGame((from, data) => this.onNet(from, data as DartsMsg));
 
     const el = this.renderer.domElement;
     el.style.touchAction = 'none';
@@ -118,29 +135,100 @@ export class Darts {
 
   private buildRoom() {
     const s = this.scene;
-    s.add(new THREE.HemisphereLight(0xffd9b0, 0x1a0f0a, 0.5));
-    const room = buildRoom();
-    this.display = room.setDisplay;
-    this.poster = room.poster;
-    s.add(room.root);
+    s.add(new THREE.HemisphereLight(0x8fa8d8, 0x120a20, 0.45));
+    const spot = new THREE.SpotLight(0xfff1dc, 18, 6, 0.45, 0.45, 1.4);
+    spot.position.set(0, 2.6, 1.0);
+    spot.target.position.set(0, BULL_Y, 0);
+    spot.castShadow = true;
+    spot.shadow.mapSize.set(1024, 1024);
+    spot.shadow.bias = -0.0005;
+    s.add(spot, spot.target);
+
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), new THREE.MeshStandardMaterial({ color: 0x1d1530, roughness: 0.95 }));
+    wall.position.set(0, 2, -0.05);
+    wall.receiveShadow = true;
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshStandardMaterial({ color: 0x241a2e, roughness: 0.9 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.z = 2;
+    floor.receiveShadow = true;
+    // Cabinet behind the board, catch ring, board face.
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.04), new THREE.MeshStandardMaterial({ color: 0x1a0f08, roughness: 0.8 }));
+    cab.position.set(0, BULL_Y, -0.03);
+    cab.receiveShadow = true;
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(BOARD_R + 0.02, BOARD_R + 0.02, 0.04, 64, 1, true), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, side: THREE.DoubleSide }));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(0, BULL_Y, -0.01);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(BOARD_R, 96), new THREE.MeshStandardMaterial({ map: dartboard(), roughness: 0.85 }));
+    face.position.set(0, BULL_Y, 0);
+    face.receiveShadow = true;
     // Throw line (oche).
     const oche = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.012, 0.04), new THREE.MeshStandardMaterial({ color: 0xd8f24a, emissive: 0x6a7a10, roughness: 0.5 }));
     oche.position.set(0, 0.006, OCHE);
-    s.add(oche);
-    useDartsStore.subscribe((st) => this.display(String(st.points), `R${st.round}`));
+    // Rules poster on the wall, left of the board.
+    this.poster = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.364), new THREE.MeshStandardMaterial({ map: rulesPoster(), roughness: 0.8 }));
+    this.poster.position.set(-0.6, 1.72, -0.045);
+    s.add(wall, floor, cab, ring, face, oche, this.poster);
   }
 
   // ------------------------------------------------------------------ flow
-  start(mode: DartsMode) {
+  /** Solo game (`opponent` 'solo'), or a 501 match against the AI / an online rival. */
+  start(mode: DartsMode, opponent: Opponent = 'solo', rival?: { id: string; name: string; first: boolean }) {
     audio.unlock();
-    for (const d of this.stuck) this.scene.remove(d);
-    this.stuck = [];
-    this.flying && this.scene.remove(this.flying.mesh);
+    this.clearBoard();
+    if (this.flying) this.scene.remove(this.flying.mesh);
     this.flying = null;
     this.turnOver = 0;
+    this.queue = [];
+    this.rival = rival?.id ?? null;
+    const st = useDartsStore.getState();
+    const me = useWorldStore.getState().name || 'Tú';
     const p = mode === '501' ? 501 : 0;
-    useDartsStore.getState().set({ screen: 'playing', mode, points: p, turnStart: p, round: 1, hits: [], banner: null, darts: 0 });
-    this.restHand();
+    const who = rival && !rival.first ? 1 : 0;
+    this.firstStarter = who;
+    st.set({
+      screen: 'playing', mode, opponent, points: p, turnStart: p, round: 1, hits: [], banner: null, darts: 0, poster: false,
+      names: [me, opponent === 'ai' ? AI_NAMES[st.level] : (rival?.name ?? 'Rival')], scores: [501, 501], legs: [0, 0], who,
+    });
+    this.beginVisit();
+  }
+
+  /** Online: look for another player who is also looking (lower id hosts and throws first). */
+  seek() {
+    audio.unlock();
+    useDartsStore.getState().set({ screen: 'seek' });
+    this.seekT = 0;
+  }
+
+  /** Leaves the current game (tells an online rival). */
+  quit() {
+    if (this.rival && useDartsStore.getState().screen === 'playing') net.sendGame({ k: 'dquit', to: this.rival } satisfies DartsMsg);
+    this.rival = null;
+    useDartsStore.getState().set({ screen: 'menu', poster: false });
+  }
+
+  private onNet(from: string, m: DartsMsg) {
+    if (!m || typeof m !== 'object') return;
+    const st = useDartsStore.getState();
+    if (m.k === 'dseek' && st.screen === 'seek' && net.id && net.id < from) {
+      net.sendGame({ k: 'dstart', to: from } satisfies DartsMsg);
+      this.start('501', 'online', { id: from, name: net.peers.get(from)?.name ?? 'Rival', first: true });
+    } else if (m.k === 'dstart' && m.to === net.id && st.screen === 'seek') {
+      this.start('501', 'online', { id: from, name: net.peers.get(from)?.name ?? 'Rival', first: false });
+    } else if (m.k === 'dthrow' && m.to === net.id && from === this.rival) {
+      const vec = (a: unknown, lo: number, hi: number): Vec3 | null => {
+        if (!Array.isArray(a) || a.length !== 3 || !a.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= lo && n <= hi)) return null;
+        return { x: a[0], y: a[1], z: a[2] };
+      };
+      const f = vec(m.f, -5, 5);
+      const v = vec(m.v, -20, 20);
+      if (f && v && f.z > 1) this.queue.push({ f, v });
+    } else if (m.k === 'dquit' && m.to === net.id && from === this.rival) this.rivalGone();
+  }
+
+  private rivalGone() {
+    this.rival = null;
+    const st = useDartsStore.getState();
+    if (st.screen === 'playing') st.set({ screen: 'end', result: `${st.names[1]} ha dejado la partida` });
   }
 
   private get live() {
@@ -154,16 +242,36 @@ export class Darts {
   /** Throws from the hand towards `aim` at `speed` m/s, turned `sideways` rad (+ right). Public for testing. */
   throwDart(aim: Vec3, speed: number, sideways: number) {
     const st = useDartsStore.getState();
-    if (this.flying || this.turnOver || st.screen !== 'playing') return;
+    if (this.flying || this.turnOver || st.screen !== 'playing' || st.who !== 0) return;
     const from = { x: this.hand.position.x, y: this.hand.position.y, z: this.hand.position.z };
     const v = launch(from, aim, speed, IDEAL, sideways + gaussian(this.rng, SCATTER));
     v.y += gaussian(this.rng, SCATTER) * speed;
+    if (this.rival) {
+      // Rounded before flying so both sides simulate exactly the same numbers.
+      const r = (n: number) => Math.round(n * 1e5) / 1e5;
+      for (const o of [from, v]) (['x', 'y', 'z'] as const).forEach((k) => (o[k] = r(o[k])));
+      net.sendGame({ k: 'dthrow', to: this.rival, f: [from.x, from.y, from.z], v: [v.x, v.y, v.z] } satisfies DartsMsg);
+    }
+    this.launchDart(from, v, 0xd8f24a);
+    this.hand.visible = false;
+  }
+
+  /** The AI picks its bed and throws with its level's aim error. */
+  private aiThrow() {
+    const st = useDartsStore.getState();
+    const t = st.mode === '501' ? aiTarget(st.points) : { n: 20, mult: 3 };
+    const c = bedCentre(t.n, t.mult);
+    const s = AI_SIGMA[st.level] ?? AI_SIGMA[1];
+    const aim = { x: c.x + gaussian(this.rng, s), y: c.y + gaussian(this.rng, s), z: 0 };
+    this.launchDart(AI_HAND, launch(AI_HAND, aim, IDEAL, IDEAL, 0), RIVAL_COLOR);
+  }
+
+  private launchDart(from: Vec3, v: Vec3, color: number) {
     const flight = fly(from, v);
     const hit = flight.end === 'board' ? scoreAt(flight.at.x, flight.at.y) : { score: 0, mult: 0, label: 'FUERA' };
-    const mesh = makeDart(0xd8f24a);
+    const mesh = makeDart(color);
     this.scene.add(mesh);
     this.flying = { mesh, flight, t: 0, hit };
-    this.hand.visible = false;
     audio.release();
   }
 
@@ -183,6 +291,7 @@ export class Darts {
     }
     const hits = [...st.hits, hit];
     const darts = st.darts + 1;
+    const match = st.opponent !== 'solo';
     if (st.mode === '501') {
       const r = apply501(st.points, hit);
       if (r.bust) {
@@ -195,24 +304,79 @@ export class Darts {
       if (r.won) {
         this.banner(`¡CIERRE! ${hit.label}`, 'win');
         audio.strike(true);
-        window.setTimeout(() => useDartsStore.getState().set({ screen: 'end' }), 1800);
         this.turnOver = 99;
+        if (!match) {
+          window.setTimeout(() => useDartsStore.getState().set({ screen: 'end', result: '' }), 1800);
+          return;
+        }
+        const w = st.who;
+        const legs: [number, number] = [st.legs[0], st.legs[1]];
+        legs[w]++;
+        st.set({ legs });
+        window.setTimeout(() => {
+          const now = useDartsStore.getState();
+          if (now.screen !== 'playing') return;
+          if (legs[w] >= LEGS_TO_WIN) now.set({ screen: 'end', result: `${now.names[w]} gana ${legs[w]}-${legs[1 - w]}` });
+          else this.nextLeg();
+        }, 2200);
         return;
       }
     } else st.set({ hits, darts, points: st.points + hit.score });
     this.banner(hit.score ? `${hit.label} · ${hit.score}` : hit.label, hit.score ? 'hit' : 'miss');
     if (hits.length >= DARTS_PER_TURN) this.turnOver = 1.6;
-    else this.restHand();
+    else if (st.who === 0) this.restHand();
+    else this.aiT = 0.9;
   }
 
-  /** Darts collected from the board: next turn. */
-  private nextTurn() {
+  private clearBoard() {
     for (const d of this.stuck) this.scene.remove(d);
     this.stuck = [];
+  }
+
+  /** Darts collected from the board: next visit (the other player's, in a match). */
+  private nextTurn() {
+    this.clearBoard();
     const st = useDartsStore.getState();
-    st.set({ hits: [], round: st.round + 1, turnStart: st.points, banner: null });
+    if (st.opponent === 'solo') {
+      st.set({ hits: [], round: st.round + 1, turnStart: st.points, banner: null });
+      this.restHand();
+    } else {
+      const scores: [number, number] = [st.scores[0], st.scores[1]];
+      scores[st.who] = st.points;
+      const who = (1 - st.who) as 0 | 1;
+      st.set({ scores, who, hits: [], banner: null, round: who === this.legStarter() ? st.round + 1 : st.round });
+      this.beginVisit();
+    }
     audio.sweep();
-    this.restHand();
+  }
+
+  /** Who opens the current leg: legs alternate from the first starter, as in competition. */
+  private legStarter(): 0 | 1 {
+    const { legs } = useDartsStore.getState();
+    return ((this.firstStarter + legs[0] + legs[1]) % 2) as 0 | 1;
+  }
+
+  /** New leg: both back to 501, the other player opens. */
+  private nextLeg() {
+    this.clearBoard();
+    this.turnOver = 0;
+    useDartsStore.getState().set({ scores: [501, 501], who: this.legStarter(), hits: [], round: 1, banner: null });
+    audio.sweep();
+    this.beginVisit();
+  }
+
+  /** Sets up the visit of `who`: their points shown, the hand or the rival ready. */
+  private beginVisit() {
+    const st = useDartsStore.getState();
+    if (st.opponent !== 'solo') {
+      st.set({ points: st.scores[st.who], turnStart: st.scores[st.who] });
+      this.banner(st.who === 0 ? 'Tu turno' : `Turno de ${st.names[1]}`, 'hit');
+    }
+    if (st.who === 0) this.restHand();
+    else {
+      this.hand.visible = false;
+      this.aiT = 1.2;
+    }
   }
 
   private restHand() {
@@ -247,7 +411,7 @@ export class Darts {
     const r = this.renderer.domElement.getBoundingClientRect();
     this.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
     if (this.live && !this.grab && this.ray.intersectObject(this.poster).length) return this.setPoster(true);
-    if (!this.live || this.grab || this.flying || this.turnOver) return;
+    if (!this.live || this.grab || this.flying || this.turnOver || useDartsStore.getState().who !== 0) return;
     const aim = this.toBoard(e);
     if (!aim) return;
     this.grab = { id: e.pointerId, y0: e.clientY, aim };
@@ -316,6 +480,17 @@ export class Darts {
 
   /** One simulation + render step (exposed for browser testing). */
   frame(dt: number) {
+    const st = useDartsStore.getState();
+    if (st.screen === 'seek' && (this.seekT -= dt) <= 0) {
+      this.seekT = 1;
+      net.sendGame({ k: 'dseek' } satisfies DartsMsg);
+    }
+    if (st.screen === 'playing' && st.who === 1 && !this.flying && !this.turnOver) {
+      if (st.opponent === 'ai' && (this.aiT -= dt) <= 0) this.aiThrow();
+      const q = st.opponent === 'online' ? this.queue.shift() : undefined;
+      if (q) this.launchDart(q.f, q.v, RIVAL_COLOR);
+    }
+    if (this.rival && st.screen === 'playing' && net.id && !net.peers.has(this.rival)) this.rivalGone();
     if (this.turnOver > 0 && this.turnOver < 90 && (this.turnOver -= dt) <= 0) {
       this.turnOver = 0;
       this.nextTurn();

@@ -135,3 +135,34 @@ export function apply501(left: number, hit: Hit): { left: number; bust: boolean;
   if (next < 0 || next === 1 || (next === 0 && hit.mult !== 2)) return { left, bust: true, won: false };
   return { left: next, bust: false, won: next === 0 };
 }
+
+// ------------------------------------------------------------------ match & AI
+
+/** Legs needed to win a match (best of 5, as in many PDC/WDF early rounds). */
+export const LEGS_TO_WIN = 3;
+
+/** Centre (board face coords) of a bed: n 1..20 with mult 1|2|3, or n 25 (mult 1 = 25, 2 = bull). */
+export function bedCentre(n: number, mult: number): { x: number; y: number } {
+  if (n === 25) return { x: 0, y: BULL_Y + (mult === 2 ? 0 : (R.bull + R.outer) / 2) };
+  const r = mult === 3 ? (R.trebleIn + R.trebleOut) / 2 : mult === 2 ? (R.doubleIn + R.doubleOut) / 2 : (R.trebleOut + R.doubleIn) / 2;
+  const a = (ORDER.indexOf(n) * Math.PI * 2) / 20;
+  return { x: Math.sin(a) * r, y: BULL_Y + Math.cos(a) * r };
+}
+
+/** Doubles a player likes to be left on, best first. */
+const GOOD_DOUBLES = [40, 32, 36, 24, 16, 20, 8, 12, 4, 2];
+
+/**
+ * Bed a darts player goes for with `left` points in 501 (double-out): finish if one dart
+ * can, set up a favourite double if a treble or single can, otherwise treble 20.
+ */
+export function aiTarget(left: number): { n: number; mult: number } {
+  if (left === 50) return { n: 25, mult: 2 };
+  if (left <= 40 && left % 2 === 0) return { n: left / 2, mult: 2 };
+  for (const mult of left <= 60 ? [1, 3] : [3, 1]) // a single is the safer set-up shot
+    for (const d of GOOD_DOUBLES)
+      for (let n = 20; n >= 1; n--) if (left - n * mult === d) return { n, mult };
+  if (left <= 60) return { n: left % 2 ? 1 : 2, mult: 1 }; // odd/awkward: tidy up
+  // Keep away from finishing on 1: T19 when T20 would leave an impossible score.
+  return left - 60 > 1 ? { n: 20, mult: 3 } : { n: 19, mult: 3 };
+}

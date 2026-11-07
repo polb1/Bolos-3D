@@ -50,3 +50,31 @@ describe('501 double-out', () => {
     expect(apply501(100, { score: 60, mult: 3, label: 'T20' })).toEqual({ left: 40, bust: false, won: false });
   });
 });
+
+import { aiTarget, bedCentre } from './physics';
+
+describe('AI checkout choice', () => {
+  const hit = (t: { n: number; mult: number }) => {
+    const c = bedCentre(t.n, t.mult);
+    return scoreAt(c.x, c.y);
+  };
+  it('aims at the middle of the bed it means', () => {
+    expect(hit({ n: 20, mult: 3 }).label).toBe('T20');
+    expect(hit({ n: 16, mult: 2 }).label).toBe('D16');
+    expect(hit({ n: 25, mult: 2 }).label).toBe('BULL');
+    expect(hit({ n: 25, mult: 1 }).label).toBe('25');
+    expect(hit({ n: 7, mult: 1 }).label).toBe('7');
+  });
+  it('finishes, sets up doubles and scores', () => {
+    expect(aiTarget(32)).toEqual({ n: 16, mult: 2 });
+    expect(aiTarget(50)).toEqual({ n: 25, mult: 2 });
+    expect(aiTarget(100)).toEqual({ n: 20, mult: 3 }); // leaves 40
+    expect(aiTarget(41)).toEqual({ n: 1, mult: 1 }); // leaves 40
+    expect(aiTarget(501)).toEqual({ n: 20, mult: 3 });
+    for (let left = 2; left <= 501; left++) {
+      const t = aiTarget(left);
+      const r = apply501(left, hit(t));
+      expect(r.bust, `left ${left} -> ${JSON.stringify(t)}`).toBe(false);
+    }
+  });
+});

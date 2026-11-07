@@ -443,3 +443,6 @@ body.touch-active .look-hint {
 .darts-turn .dt.done { color: #fff; border-color: rgba(216, 242, 74, 0.5); }
 .darts-turn .dt.sum { color: #ffd166; }
 .darts-banner { font-size: clamp(28px, 7vw, 56px); }
+.darts-player { align-items: baseline; gap: 6px; opacity: 0.55; font-size: 17px; }
+.darts-player.turn { opacity: 1; }
+.darts-player .dp-name { font-size: 13px; font-weight: 700; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
