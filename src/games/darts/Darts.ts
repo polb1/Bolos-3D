@@ -4,10 +4,10 @@ import { audio } from '../../audio/AudioEngine';
 import { SwingTracker } from '../../game/SwingTracker';
 import { clamp } from '../../utils/math';
 import { createRng, gaussian } from '../../utils/random';
-import { dartboard } from '../../world3d/textures';
 import { useWorldStore } from '../../world/worldStore';
 import { apply501, BOARD_R, BULL_Y, DARTS_PER_TURN, fly, launch, OCHE, scoreAt, type DartsMode, type Flight, type Hit, type Vec3 } from './physics';
 import { useDartsStore } from './store';
+import { buildRoom } from './room';
 
 /** Comfortable throwing speed (m/s): the arc the player's aim is trained for. */
 const IDEAL = 6;
@@ -19,7 +19,7 @@ const MIN_FLICK = 0.9;
 const SCATTER = 0.006;
 const WRIST = 0.12;
 /** Where the hand holds the dart at rest (right-handed, just below the eye line). */
-const HAND: Vec3 = { x: 0.07, y: 1.6, z: OCHE + 0.28 };
+const HAND: Vec3 = { x: 0, y: 1.6, z: OCHE + 0.2 };
 const PULL = 0.16; // m the hand moves back at full pull
 
 interface Flying {
@@ -32,7 +32,6 @@ interface Flying {
 /** A steel-tip dart pointing along -z: tip, tungsten barrel, shaft, flights. */
 function makeDart(color: number) {
   const g = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color: 0xb8bcc4, metalness: 0.9, roughness: 0.3 });
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, z: number) => {
     const m = new THREE.Mesh(geo, mat);
     m.rotation.x = -Math.PI / 2;
@@ -41,7 +40,8 @@ function makeDart(color: number) {
     g.add(m);
     return m;
   };
-  add(new THREE.ConeGeometry(0.0012, 0.03, 8), metal, -0.015); // tip (its end is the origin)
+  // Soft (plastic) tip for the electronic board; its end is the origin.
+  add(new THREE.ConeGeometry(0.0022, 0.026, 10), new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 }), -0.013);
   add(new THREE.CylinderGeometry(0.0034, 0.0029, 0.05, 14), new THREE.MeshStandardMaterial({ color: 0x6d7078, metalness: 0.85, roughness: 0.35 }), 0.025);
   add(new THREE.CylinderGeometry(0.0016, 0.0019, 0.04, 8), new THREE.MeshStandardMaterial({ color: 0x15151a, roughness: 0.5 }), 0.07);
   const flight = new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide });
@@ -81,6 +81,9 @@ export class Darts {
   private raf = 0;
   private last = performance.now();
   private bannerN = 0;
+  private display: (big: string, small: string) => void = () => {};
+  /** Last aim point, so the sight stays where the player left it. */
+  private aim: Vec3 = { x: 0, y: BULL_Y, z: 0 };
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -99,8 +102,13 @@ export class Darts {
 
     this.hand = makeDart(0xd8f24a);
     this.scene.add(this.hand);
-    this.aimDot = new THREE.Mesh(new THREE.RingGeometry(0.004, 0.006, 24), new THREE.MeshBasicMaterial({ color: 0xd8f24a, transparent: true, opacity: 0.7, depthWrite: false }));
-    this.aimDot.visible = false;
+    // Sight: where the dart should land with your normal throw (the circle is the usual spread).
+    const sightMat = new THREE.MeshBasicMaterial({ color: 0xd8f24a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: false });
+    this.aimDot = new THREE.Mesh(new THREE.RingGeometry(0.024, 0.031, 48), sightMat);
+    this.aimDot.add(new THREE.Mesh(new THREE.CircleGeometry(0.005, 16), sightMat));
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(0.026, 48), new THREE.MeshBasicMaterial({ color: 0xd8f24a, transparent: true, opacity: 0.22, depthWrite: false, depthTest: false }));
+    this.aimDot.add(fill);
+    this.aimDot.renderOrder = 2;
     this.scene.add(this.aimDot);
     this.restHand();
 
@@ -117,36 +125,15 @@ export class Darts {
 
   private buildRoom() {
     const s = this.scene;
-    s.add(new THREE.HemisphereLight(0x8fa8d8, 0x120a20, 0.45));
-    const spot = new THREE.SpotLight(0xfff1dc, 18, 6, 0.45, 0.45, 1.4);
-    spot.position.set(0, 2.6, 1.0);
-    spot.target.position.set(0, BULL_Y, 0);
-    spot.castShadow = true;
-    spot.shadow.mapSize.set(1024, 1024);
-    spot.shadow.bias = -0.0005;
-    s.add(spot, spot.target);
-
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), new THREE.MeshStandardMaterial({ color: 0x1d1530, roughness: 0.95 }));
-    wall.position.set(0, 2, -0.05);
-    wall.receiveShadow = true;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshStandardMaterial({ color: 0x241a2e, roughness: 0.9 }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.z = 2;
-    floor.receiveShadow = true;
-    // Cabinet behind the board, catch ring, board face.
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.04), new THREE.MeshStandardMaterial({ color: 0x1a0f08, roughness: 0.8 }));
-    cab.position.set(0, BULL_Y, -0.03);
-    cab.receiveShadow = true;
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(BOARD_R + 0.02, BOARD_R + 0.02, 0.04, 64, 1, true), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, side: THREE.DoubleSide }));
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(0, BULL_Y, -0.01);
-    const face = new THREE.Mesh(new THREE.CircleGeometry(BOARD_R, 96), new THREE.MeshStandardMaterial({ map: dartboard(), roughness: 0.85 }));
-    face.position.set(0, BULL_Y, 0);
-    face.receiveShadow = true;
+    s.add(new THREE.HemisphereLight(0xffd9b0, 0x1a0f0a, 0.5));
+    const room = buildRoom();
+    this.display = room.setDisplay;
+    s.add(room.root);
     // Throw line (oche).
     const oche = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.012, 0.04), new THREE.MeshStandardMaterial({ color: 0xd8f24a, emissive: 0x6a7a10, roughness: 0.5 }));
     oche.position.set(0, 0.006, OCHE);
-    s.add(wall, floor, cab, ring, face, oche);
+    s.add(oche);
+    useDartsStore.subscribe((st) => this.display(String(st.points), `R${st.round}`));
   }
 
   // ------------------------------------------------------------------ flow
@@ -263,13 +250,18 @@ export class Darts {
     this.renderer.domElement.setPointerCapture?.(e.pointerId);
     this.tracker.reset();
     this.tracker.add(e.timeStamp / 1000, 0, 0);
-    this.aimDot.position.set(aim.x, aim.y, 0.002);
-    this.aimDot.visible = true;
+    this.aim = aim;
   };
 
   private onMove = (e: PointerEvent) => {
     const g = this.grab;
-    if (!g || e.pointerId !== g.id) return;
+    if (!g) {
+      // Hover (mouse): the sight follows the pointer.
+      const a = this.live && e.pointerType === 'mouse' ? this.toBoard(e) : null;
+      if (a) this.aim = a;
+      return;
+    }
+    if (e.pointerId !== g.id) return;
     const h = this.renderer.domElement.clientHeight || 1;
     const events = e.getCoalescedEvents?.() ?? [];
     for (const c of events.length ? events : [e]) this.tracker.add(c.timeStamp / 1000, (c.clientX - 0) / h, (c.clientY - g.y0) / h);
@@ -281,7 +273,6 @@ export class Darts {
     const g = this.grab;
     if (!g || e.pointerId !== g.id) return;
     this.grab = null;
-    this.aimDot.visible = false;
     const rel = this.tracker.release();
     if (!rel || rel.forward < MIN_FLICK) {
       this.pull = 0; // not a throw: the dart stays in the hand
@@ -295,7 +286,6 @@ export class Darts {
   private onCancel = (e: PointerEvent) => {
     if (this.grab?.id !== e.pointerId) return;
     this.grab = null;
-    this.aimDot.visible = false;
     this.pull = 0;
   };
 
@@ -306,8 +296,8 @@ export class Darts {
     this.renderer.setSize(w, h);
     const aspect = w / h;
     this.camera.aspect = aspect;
-    // Keep the board and some wall visible on narrow (portrait) screens too.
-    this.camera.fov = aspect < 0.8 ? 30 / Math.max(aspect, 0.45) * 0.8 : 30;
+    // Portrait: keep the machine's width (about ±9.5° from the eye) filling the screen.
+    this.camera.fov = Math.max(30, (2 * Math.atan(Math.tan((9.5 * Math.PI) / 180) / aspect) * 180) / Math.PI);
     this.camera.position.set(0, 1.68, OCHE + 0.6);
     this.camera.lookAt(0, BULL_Y - 0.12, 0);
     this.camera.updateProjectionMatrix();
@@ -333,6 +323,8 @@ export class Darts {
         this.land(f);
       }
     }
+    this.aimDot.visible = this.live && !this.flying && !this.turnOver;
+    this.aimDot.position.set(this.aim.x, this.aim.y, 0.003);
     if (this.hand.visible) {
       const target = HAND.z + this.pull * PULL;
       this.hand.position.z += (target - this.hand.position.z) * Math.min(1, dt * 25);

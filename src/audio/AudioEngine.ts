@@ -237,19 +237,20 @@ export class AudioEngine {
   }
 
   // ------------------------------------------------------------------ darts
-  /** Steel tip biting into sisal: a short dull thock. `level` 0..1.2. */
+  /** Plastic tip into the electronic board: a click plus the machine's scoring beep. `level` 0..1.2. */
   dartHit(level: number) {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const src = this.noiseSource();
     const lp = this.ctx.createBiquadFilter();
-    lp.frequency.value = 1400;
+    lp.frequency.value = 2600;
     const g = this.ctx.createGain();
     this.env(g, now, 0.7 * level, 0.001, 0.06);
     src.connect(lp).connect(g).connect(this.master);
     src.start(now);
     src.stop(now + 0.1);
     this.tone(180, 'sine', now, 0.4 * level, 0.08);
+    this.tone(1480, 'square', now + 0.06, 0.06, 0.09);
   }
 
   // ------------------------------------------------------------------ air hockey

@@ -35,7 +35,7 @@ function Menu() {
         <h1 className="game-title big">
           DAR<span>DOS</span>
         </h1>
-        <p className="menu-tagline">Diana reglamentaria · 2,37 m · física real</p>
+        <p className="menu-tagline">Máquina electrónica de bar · 2,44 m · física real</p>
         <div className="menu-buttons">
           <button className="btn primary xl" onClick={start('501')} autoFocus>
             ▶ 501

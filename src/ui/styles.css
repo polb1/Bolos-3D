@@ -438,7 +438,7 @@ body.touch-active .look-hint {
 .lobby-panel .lobby-hint { font-size: 12px; margin: 8px 0 0; opacity: 0.8; }
 
 /* Darts: the current turn's three darts under the score */
-.darts-turn { position: absolute; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
+.darts-turn { position: absolute; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
 .darts-turn .dt { min-width: 46px; padding: 4px 8px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 14px; background: rgba(10, 16, 32, 0.6); color: rgba(255, 255, 255, 0.35); border: 1px solid rgba(255, 255, 255, 0.12); }
 .darts-turn .dt.done { color: #fff; border-color: rgba(216, 242, 74, 0.5); }
 .darts-turn .dt.sum { color: #ffd166; }

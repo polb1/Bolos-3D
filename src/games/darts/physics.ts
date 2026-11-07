@@ -5,7 +5,7 @@
  */
 
 export const BULL_Y = 1.73; // regulation height of the bull
-export const OCHE = 2.37; // throw line distance to the board face
+export const OCHE = 2.44; // soft-tip (electronic) throw line distance to the board face
 /** Outer edge of the black surround (dart still sticks, scores 0). */
 export const BOARD_R = 0.2123;
 /** Regulation radii (m): inner bull, outer bull, treble in/out, double in/out. */
