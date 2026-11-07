@@ -3,8 +3,8 @@ import { PIN_SPACING, rackPositions } from '../config/constants';
 
 const W = 960;
 const H = 540;
-const LIME = '#d8f24a';
-const CYAN = '#6ee8fa';
+const LIME = '#eca337';
+const CYAN = '#e5b483';
 const GOLD = '#ffd23f';
 
 export type Celebration = 'strike' | 'spare';
@@ -64,9 +64,9 @@ export class Monitor {
     screen.position.z = 0.026;
     const bezel = new THREE.Mesh(
       new THREE.BoxGeometry(sw + 0.08, sh + 0.08, 0.05),
-      new THREE.MeshStandardMaterial({ color: 0x0b0f1a, roughness: 0.4, metalness: 0.5 }),
+      new THREE.MeshStandardMaterial({ color: 0x1a120c, roughness: 0.4, metalness: 0.5 }),
     );
-    const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7), new THREE.MeshStandardMaterial({ color: 0x1b2440, metalness: 0.6 }));
+    const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7), new THREE.MeshStandardMaterial({ color: 0x3a2416, metalness: 0.6 }));
     mount.position.set(0, sh / 2 + 0.35, -0.05);
     const tv = new THREE.Group();
     tv.add(bezel, screen, mount);
@@ -97,24 +97,24 @@ export class Monitor {
     this.idleKey = key;
     const g = this.ctx;
     const bg = g.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#0b1730');
-    bg.addColorStop(1, '#060c1a');
+    bg.addColorStop(0, '#281e13');
+    bg.addColorStop(1, '#16100a');
     g.fillStyle = bg;
     g.fillRect(0, 0, W, H);
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillStyle = '#9fc3ee';
+    g.fillStyle = '#e2c6ab';
     g.font = '700 40px system-ui, sans-serif';
     g.fillText(name.toUpperCase(), W / 2, 110);
     if (label) {
       g.fillStyle = '#ffe27a';
       g.font = '900 200px system-ui, sans-serif';
       g.fillText(String(total), W / 2, 280);
-      g.fillStyle = '#7ea4d4';
+      g.fillStyle = '#c7a98b';
       g.font = '700 30px system-ui, sans-serif';
       g.fillText(`${label} · FRAME ${frame}`, W / 2, 430);
     } else {
-      g.fillStyle = '#eaf2ff';
+      g.fillStyle = '#fcf4ed';
       g.font = '900 120px system-ui, sans-serif';
       g.fillText('BOLERA', W / 2 - 80, 290);
       g.fillStyle = LIME;
@@ -205,8 +205,8 @@ export class Monitor {
 
     // Backdrop: deck seen from the front with lights.
     const bg = g.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, '#0d1a36');
-    bg.addColorStop(0.62, '#13254a');
+    bg.addColorStop(0, '#2d2216');
+    bg.addColorStop(0.62, '#3e2f1f');
     bg.addColorStop(0.62, '#c99a5e');
     bg.addColorStop(1, '#8a5d2e');
     g.fillStyle = bg;
@@ -283,7 +283,7 @@ export class Monitor {
       g.textBaseline = 'middle';
       g.font = '900 150px system-ui, sans-serif';
       g.lineWidth = 16;
-      g.strokeStyle = '#0a1020';
+      g.strokeStyle = '#1b150f';
       g.strokeText(c.title, 0, 0);
       g.fillStyle = accent;
       g.fillText(c.title, 0, 0);
@@ -297,7 +297,7 @@ export class Monitor {
 
     // Fade to black at the end.
     if (t > CLIP_LENGTH - 0.35) {
-      g.fillStyle = `rgba(6,12,26,${(t - (CLIP_LENGTH - 0.35)) / 0.35})`;
+      g.fillStyle = `rgba(26,18,12,${(t - (CLIP_LENGTH - 0.35)) / 0.35})`;
       g.fillRect(-20, -20, W + 40, H + 40);
     }
     g.restore();
@@ -320,13 +320,13 @@ export class Monitor {
     g.bezierCurveTo(w * 0.62, -h * 0.5, w * 0.75, -h * 0.25, w * 0.32, 0);
     g.closePath();
     const grad = g.createLinearGradient(-w / 2, 0, w / 2, 0);
-    grad.addColorStop(0, '#d8dde8');
+    grad.addColorStop(0, '#e6e0da');
     grad.addColorStop(0.4, '#ffffff');
-    grad.addColorStop(1, '#b9c0cf');
+    grad.addColorStop(1, '#ccc4bc');
     g.fillStyle = grad;
     g.fill();
     g.lineWidth = 3 * s;
-    g.strokeStyle = '#0a1020';
+    g.strokeStyle = '#1b150f';
     g.stroke();
     g.fillStyle = '#d0142a';
     g.fillRect(-w * 0.22, -h * 0.7, w * 0.44, h * 0.035);

@@ -85,8 +85,8 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(this.renderer.domElement);
 
-    this.scene.background = new THREE.Color(0x0a1020);
-    this.scene.fog = new THREE.Fog(0x0a1020, 26, 60);
+    this.scene.background = new THREE.Color(0x1a120c);
+    this.scene.fog = new THREE.Fog(0x1a120c, 26, 60);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.45;

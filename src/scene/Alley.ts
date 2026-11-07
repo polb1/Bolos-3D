@@ -1,3 +1,4 @@
+import { darkWood, plaster, wainscot } from '../world3d/textures';
 import * as THREE from 'three';
 import { HEAD_PIN_Z, LANE, PIT_Z, rackPositions } from '../config/constants';
 import type { QualityPreset, Settings } from '../config/settings';
@@ -36,7 +37,7 @@ export class Alley {
     this.buildRoom();
 
     // Lighting: soft fill, a long key light for lane/ball shadows, a spot on the pins.
-    this.group.add(new THREE.HemisphereLight(0xbfd8ff, 0x24150a, 0.55));
+    this.group.add(new THREE.HemisphereLight(0xffe6c8, 0x24150a, 0.55));
     this.key = new THREE.DirectionalLight(0xfff1dc, 1.6);
     this.key.position.set(0.6, 9, -6.5);
     this.key.target.position.set(0, 0, -10.5);
@@ -51,7 +52,7 @@ export class Alley {
     this.key.shadow.normalBias = 0.02;
     this.group.add(this.key, this.key.target);
 
-    this.deckSpot = new THREE.SpotLight(0xffffff, 18, 6, 0.6, 0.5, 1.4);
+    this.deckSpot = new THREE.SpotLight(0xfff0dc, 18, 6, 0.6, 0.5, 1.4);
     this.deckSpot.position.set(0, 2.6, HEAD_PIN_Z + 1.4);
     this.deckSpot.target.position.set(0, 0, HEAD_PIN_Z - 0.4);
     this.deckSpot.shadow.bias = -0.0005;
@@ -124,14 +125,14 @@ export class Alley {
       const capLen = laneLen + 0.2;
       const cap = new THREE.Mesh(
         new THREE.BoxGeometry(0.07, 0.07, capLen),
-        new THREE.MeshStandardMaterial({ color: 0x1b2440, roughness: 0.5, metalness: 0.2 }),
+        new THREE.MeshStandardMaterial({ color: 0x3a2416, roughness: 0.4, metalness: 0.1 }),
       );
       cap.position.set(s * (HW + GW + 0.035), 0.035, -capLen / 2 + 0.1);
       g.add(cap);
 
       const kick = new THREE.Mesh(
         new THREE.BoxGeometry(0.06, 0.9, 2.9),
-        new THREE.MeshStandardMaterial({ color: 0x141c33, roughness: 0.6 }),
+        new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.6 }),
       );
       kick.position.set(s * (HW + GW + 0.03), 0.45, HEAD_PIN_Z - 0.85);
       kick.receiveShadow = true;
@@ -146,7 +147,7 @@ export class Alley {
     pit.position.set(0, -0.21 - 0.03, PIT_Z - 0.9);
     const curtain = new THREE.Mesh(
       new THREE.PlaneGeometry(LANE.width + 2 * GW + 0.14, 1.4),
-      new THREE.MeshStandardMaterial({ color: 0x060a14, roughness: 1 }),
+      new THREE.MeshStandardMaterial({ color: 0x0d0806, roughness: 1 }),
     );
     curtain.position.set(0, 0.5, PIT_Z - 1.62);
     g.add(pit, curtain);
@@ -226,33 +227,32 @@ export class Alley {
     this.group.add(floor);
 
     // Ceiling with rows of light panels.
-    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(width, 30), new THREE.MeshStandardMaterial({ color: 0x070b16, roughness: 1 }));
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(width, 30), new THREE.MeshStandardMaterial({ map: darkWood([4, 10]), color: 0x6a5040, roughness: 0.9 }));
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(0, 3.4, -8);
     this.group.add(ceiling);
     const panelGeo = new THREE.PlaneGeometry(width * 0.95, 0.12);
-    const panelMat = new THREE.MeshBasicMaterial({ color: 0xdfe9ff });
-    const neonMat = new THREE.MeshBasicMaterial({ color: 0xd8f24a });
+    const panelMat = new THREE.MeshBasicMaterial({ color: 0xfff0d8 });
     for (let z = 2; z > -20; z -= 3.2) {
-      const p = new THREE.Mesh(panelGeo, z === 2 ? neonMat : panelMat);
+      const p = new THREE.Mesh(panelGeo, panelMat);
       p.rotation.x = Math.PI / 2;
       p.position.set(0, 3.39, z);
       this.group.add(p);
     }
 
-    // Side walls with a neon accent line.
+    // Side walls: plaster over wood panelling, like the rest of the lounge.
     for (const s of [-1, 1]) {
-      const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 3.4), new THREE.MeshStandardMaterial({ color: 0x0b1226, roughness: 0.9 }));
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 3.4), new THREE.MeshStandardMaterial({ map: plaster([8, 1]), color: 0x9a8a78, roughness: 0.95 }));
       wall.rotation.y = -s * Math.PI / 2;
       wall.position.set((s * width) / 2, 1.7, -8);
-      const neon = new THREE.Mesh(new THREE.PlaneGeometry(30, 0.05), new THREE.MeshBasicMaterial({ color: 0x3fc1ff }));
-      neon.rotation.y = -s * Math.PI / 2;
-      neon.position.set((s * width) / 2 - s * 0.01, 2.6, -8);
-      this.group.add(wall, neon);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(30, 1.1), new THREE.MeshStandardMaterial({ map: wainscot([24, 1]), roughness: 0.6 }));
+      panel.rotation.y = -s * Math.PI / 2;
+      panel.position.set((s * width) / 2 - s * 0.01, 0.55, -8);
+      this.group.add(wall, panel);
     }
 
     // Back wall behind the bowler.
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(width, 3.4), new THREE.MeshStandardMaterial({ color: 0x0b1226 }));
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(width, 3.4), new THREE.MeshStandardMaterial({ map: plaster([3, 1]), color: 0x9a8a78, roughness: 0.95 }));
     back.rotation.y = Math.PI;
     back.position.set(0, 1.7, LANE.approachLength + 6);
     this.group.add(back);

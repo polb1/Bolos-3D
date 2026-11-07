@@ -112,12 +112,12 @@ export function ballTexture(base: string, swirl: string) {
 export function maskingTexture(lane: number) {
   const [c, g] = canvas(1024, 256);
   const grad = g.createLinearGradient(0, 0, c.width, c.height);
-  grad.addColorStop(0, '#0d1a36');
-  grad.addColorStop(0.5, '#1d3466');
-  grad.addColorStop(1, '#0d1a36');
+  grad.addColorStop(0, '#2a160e');
+  grad.addColorStop(0.5, '#4a2818');
+  grad.addColorStop(1, '#2a160e');
   g.fillStyle = grad;
   g.fillRect(0, 0, c.width, c.height);
-  g.strokeStyle = 'rgba(216,242,74,0.9)';
+  g.strokeStyle = 'rgba(236,163,55,0.9)';
   g.lineWidth = 6;
   for (let i = -4; i < 12; i++) {
     g.beginPath();
@@ -127,15 +127,15 @@ export function maskingTexture(lane: number) {
     g.stroke();
   }
   g.globalAlpha = 1;
-  g.fillStyle = '#eaf2ff';
-  g.font = '900 96px system-ui, sans-serif';
+  g.fillStyle = '#f6ead8';
+  g.font = '900 96px Georgia, serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText('BOLERA', 430, 128);
-  g.fillStyle = '#d8f24a';
-  g.fillText('3D', 690, 128);
+  g.fillText('BOLERA', 470, 128);
+  g.fillStyle = '#eca337';
+  g.fillText('·', 750, 128);
   g.font = '700 54px system-ui, sans-serif';
-  g.fillStyle = '#9fc3ee';
+  g.fillStyle = '#e2c6ab';
   g.fillText(String(lane), 70, 60);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -145,9 +145,9 @@ export function maskingTexture(lane: number) {
 /** Dark patterned carpet for the approach/settee area. */
 export function carpetTexture() {
   const [c, g] = canvas(256, 256);
-  g.fillStyle = '#121a33';
+  g.fillStyle = '#3a1c16';
   g.fillRect(0, 0, 256, 256);
-  const cols = ['#2a3f7a', '#d8f24a', '#3fc1ff', '#7a3fbf'];
+  const cols = ['#6a2a22', '#c98a3a', '#2f4a3a', '#8a5a3a'];
   const rnd = seeded(3);
   for (let i = 0; i < 70; i++) {
     g.strokeStyle = cols[i % cols.length];
