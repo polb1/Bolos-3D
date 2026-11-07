@@ -56,19 +56,21 @@ Decisiones del centro recreativo en [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ```
 src/
-  world/      local pixel art: World.ts (canvas 2D), map.ts (salas), sprites.ts, activities.ts
-  config/     constants.ts (medidas y parámetros físicos), settings.ts (opciones y calidad)
-  physics/    PhysicsWorld.ts (mundo Rapier: pista, canaletas, foso, bola, bolos), pinShape.ts
-  scoring/    scoring.ts — reglas oficiales, funciones puras
-  game/       Game.ts (bucle, fases, cámara), PinRack.ts (bolos + recolocadora),
-              SwingTracker.ts (gesto → tiro), Input.ts, match.ts (turnos, splits, banners), ai.ts (rivales)
-  scene/      Alley.ts (bolera, luces), pinMesh.ts, textures.ts (texturas procedurales)
-  audio/      AudioEngine.ts
-  store/      useGameStore.ts (Zustand: pantallas, partida, HUD, ajustes, estadísticas, monedas)
-  ui/         componentes React (menú, configuración, HUD, marcador, pausa, resultados, táctil)
-  utils/      storage.ts, math.ts
+  world3d/    local 3D por defecto: World.ts (bucle, cámara, actividades), Hall.ts (edificio y zonas),
+              props.ts (muebles), textures.ts, lounge.ts (salón compartido por los minijuegos)
+  world/      local pixel art (World.ts, map.ts, sprites.ts) y lo común: worldStore, collide
+  games/
+    bowling/  constants.ts, physics/ (Rapier), scoring/, game/ (Game, PinRack, match, ai),
+              scene/ (Alley, Monitor, pinMesh, textures), store/useGameStore.ts, ui/
+    airhockey/ física 2D propia, IA, online, mesa, ui/
+    darts/    physics.ts (vuelo, puntuación, 501, rebotes, IA), Darts.ts, poster.ts, ui/
+  net/        cliente y protocolo de la sala online (servidor en server/)
+  audio/      AudioEngine.ts (todo sintetizado)
+  config/     settings.ts (opciones y calidad)
+  ui/         App, portada, carga, common.ts (click, useEsc), estilos
+  utils/      math, random (con semilla), storage, SwingTracker (gesto → tiro), canvas (texturas)
 ```
 
-React solo pinta la interfaz; Three.js funciona en modo imperativo dentro de `Game`, como en la web de referencia. Los dos se comunican a través del store.
+React solo pinta la interfaz; Three.js funciona en modo imperativo dentro de la clase de cada juego. Los dos se comunican a través del store.
 
 Ajustes, récord y estadísticas se guardan en `localStorage` (`bowl.*`).
