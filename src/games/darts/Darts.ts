@@ -5,6 +5,7 @@ import { SwingTracker } from '../../game/SwingTracker';
 import { clamp } from '../../utils/math';
 import { createRng, gaussian } from '../../utils/random';
 import { net } from '../../net/client';
+import { buildLounge } from '../../world3d/lounge';
 import { dartboard } from '../../world3d/textures';
 import { useWorldStore } from '../../world/worldStore';
 import { aiTarget, apply501, BOARD_R, bedCentre, BULL_Y, DARTS_PER_TURN, fly, launch, LEGS_TO_WIN, OCHE, scoreAt, type DartsMode, type Flight, type Hit, type Vec3 } from './physics';
@@ -110,7 +111,7 @@ export class Darts {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     host.appendChild(this.renderer.domElement);
 
-    this.scene.background = new THREE.Color(0x0c0818);
+    this.scene.background = new THREE.Color(0x1a120c);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.35;
@@ -135,22 +136,16 @@ export class Darts {
 
   private buildRoom() {
     const s = this.scene;
-    s.add(new THREE.HemisphereLight(0x8fa8d8, 0x120a20, 0.45));
-    const spot = new THREE.SpotLight(0xfff1dc, 18, 6, 0.45, 0.45, 1.4);
+    const spot = new THREE.SpotLight(0xffe2b8, 12, 6, 0.32, 0.6, 1.4);
     spot.position.set(0, 2.6, 1.0);
     spot.target.position.set(0, BULL_Y, 0);
     spot.castShadow = true;
     spot.shadow.mapSize.set(1024, 1024);
     spot.shadow.bias = -0.0005;
     s.add(spot, spot.target);
+    // The board hangs in a corner of the games lounge.
+    s.add(buildLounge({ w: 5, d: 5.5, back: -0.05, h: 3, lamps: [[-1.4, 2.6], [1.4, 2.6]] }));
 
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), new THREE.MeshStandardMaterial({ color: 0x1d1530, roughness: 0.95 }));
-    wall.position.set(0, 2, -0.05);
-    wall.receiveShadow = true;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshStandardMaterial({ color: 0x241a2e, roughness: 0.9 }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.z = 2;
-    floor.receiveShadow = true;
     // Cabinet behind the board, catch ring, board face.
     const cab = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.04), new THREE.MeshStandardMaterial({ color: 0x1a0f08, roughness: 0.8 }));
     cab.position.set(0, BULL_Y, -0.03);
@@ -167,7 +162,7 @@ export class Darts {
     // Rules poster on the wall, left of the board.
     this.poster = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.364), new THREE.MeshStandardMaterial({ map: rulesPoster(), roughness: 0.8 }));
     this.poster.position.set(-0.6, 1.72, -0.045);
-    s.add(wall, floor, cab, ring, face, oche, this.poster);
+    s.add(cab, ring, face, oche, this.poster);
   }
 
   // ------------------------------------------------------------------ flow

@@ -447,11 +447,15 @@ export class Game {
   // ------------------------------------------------------------------ loop
   private loop = () => {
     this.raf = requestAnimationFrame(this.loop);
-    const dt = Math.min(this.clock.getDelta(), 0.1);
-    if (useWorldStore.getState().place !== 'bowling') return; // the hall owns the screen
+    if (useWorldStore.getState().place !== 'bowling') return void this.clock.getDelta(); // the hall owns the screen
+    this.frame(Math.min(this.clock.getDelta(), 0.1));
+  };
+
+  /** One update + render step (also driven by hand in browser tests, where rAF may be throttled). */
+  frame(dt: number) {
     if (!this.paused) this.update(dt);
     this.render(dt);
-  };
+  }
 
   private update(dt: number) {
     this.time += dt;

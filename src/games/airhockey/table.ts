@@ -142,9 +142,9 @@ export function buildTable(): TableParts {
   surface.receiveShadow = true;
   root.add(surface);
 
-  const body = new THREE.MeshPhysicalMaterial({ color: 0x1c1240, roughness: 0.45, metalness: 0.2, clearcoat: 0.6 });
+  const body = new THREE.MeshPhysicalMaterial({ color: 0x2a1a12, roughness: 0.45, metalness: 0.1, clearcoat: 0.6 });
   const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe6f0, roughness: 0.15, metalness: 1 });
-  const rail = new THREE.MeshPhysicalMaterial({ color: 0x1b2742, roughness: 0.3, clearcoat: 1 });
+  const rail = new THREE.MeshPhysicalMaterial({ color: 0x151515, roughness: 0.3, clearcoat: 1 });
   const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
     const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
     b.position.set(x, y, z);
@@ -181,12 +181,12 @@ export function buildTable(): TableParts {
   // LED strips along the cabinet; their colour flashes on goals.
   const leds: THREE.MeshStandardMaterial[] = [];
   for (const s of [-1, 1]) {
-    const m = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: COLORS.p1, emissiveIntensity: 1.6 });
+    const m = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: COLORS.p1, emissiveIntensity: 0.9 });
     leds.push(m);
     box(0.012, 0.018, L + RAIL_W * 2 - 0.04, m, s * (W / 2 + RAIL_W + 0.004), S - 0.05, 0).castShadow = false;
   }
   for (const s of [-1, 1]) {
-    const m = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: s > 0 ? COLORS.p1 : COLORS.p2, emissiveIntensity: 1.6 });
+    const m = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: s > 0 ? COLORS.p1 : COLORS.p2, emissiveIntensity: 0.9 });
     leds.push(m);
     box(W + RAIL_W * 2 - 0.04, 0.018, 0.012, m, 0, S - 0.05, s * (L / 2 + RAIL_W + 0.004)).castShadow = false;
   }

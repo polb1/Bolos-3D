@@ -75,15 +75,13 @@ export class AirHockey {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     host.appendChild(this.renderer.domElement);
 
-    this.scene.background = new THREE.Color(0x120a26);
-    this.scene.fog = new THREE.Fog(0x120a26, 10, 24);
+    this.scene.background = new THREE.Color(0x1a120c);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.5;
     pmrem.dispose();
 
-    this.scene.add(new THREE.HemisphereLight(0x9fc3ee, 0x0a1020, 0.35));
-    const spot = new THREE.SpotLight(0xffffff, 16, 8, 0.6, 0.5, 1.2);
+    const spot = new THREE.SpotLight(0xffe8c8, 16, 8, 0.6, 0.5, 1.2);
     spot.position.set(0.3, SURFACE_Y + 2.6, 0.4);
     spot.target.position.set(0, SURFACE_Y, 0);
     spot.castShadow = true;
@@ -519,11 +517,11 @@ export class AirHockey {
 
   private setLeds(color: THREE.Color | null, k = 1) {
     // Order from buildTable: two side strips, then the rival's end and yours.
-    const base = [0x4fb6ff, 0x4fb6ff, COLORS.p2, COLORS.p1];
+    const base = [0xffc27a, 0xffc27a, COLORS.p2, COLORS.p1];
     this.table.leds.forEach((m, i) => {
       m.emissive.set(base[i]);
       if (color) m.emissive.lerp(color, k);
-      m.emissiveIntensity = 1.4 + (color ? k * 2.5 : 0);
+      m.emissiveIntensity = 0.7 + (color ? k * 2.5 : 0);
     });
   }
 

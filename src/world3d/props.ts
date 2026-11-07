@@ -153,10 +153,11 @@ export function dartCabinet() {
   // Open doors with a chalk scoreboard inside.
   for (const s of [-1, 1]) {
     const door = new THREE.Group();
-    door.add(mesh(new THREE.BoxGeometry(0.33, 0.66, 0.025), wood, s * 0.165, 0, 0));
-    door.add(mesh(new THREE.BoxGeometry(0.27, 0.56, 0.005), std(0x1d2b22, 0.95), s * 0.165, 0, 0.014));
+    // Hinged on the outer edge; closed it would cover half the board (inner face, with the chalkboard, towards -z).
+    door.add(mesh(new THREE.BoxGeometry(0.33, 0.66, 0.025), wood, -s * 0.165, 0, 0));
+    door.add(mesh(new THREE.BoxGeometry(0.27, 0.56, 0.005), std(0x1d2b22, 0.95), -s * 0.165, 0, -0.014));
     door.position.set(s * 0.33, 1.73, 0.06);
-    door.rotation.y = -s * 1.35;
+    door.rotation.y = s * 2.8; // swung open almost flat against the wall
     g.add(door);
   }
   // Darts stuck in the board.
