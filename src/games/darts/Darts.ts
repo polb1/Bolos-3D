@@ -19,7 +19,7 @@ const MIN_FLICK = 0.9;
 const SCATTER = 0.006;
 const WRIST = 0.12;
 /** Where the hand holds the dart at rest (right-handed, just below the eye line). */
-const HAND: Vec3 = { x: 0, y: 1.6, z: OCHE + 0.2 };
+const HAND: Vec3 = { x: 0, y: 1.6, z: OCHE + 0.28 };
 const PULL = 0.16; // m the hand moves back at full pull
 
 interface Flying {
@@ -72,7 +72,6 @@ export class Darts {
   private readonly tracker = new SwingTracker();
   private readonly rng = createRng();
   private readonly hand: THREE.Group;
-  private readonly aimDot: THREE.Mesh;
   private stuck: THREE.Group[] = [];
   private flying: Flying | null = null;
   private grab: { id: number; y0: number; aim: Vec3 } | null = null;
@@ -82,8 +81,6 @@ export class Darts {
   private last = performance.now();
   private bannerN = 0;
   private display: (big: string, small: string) => void = () => {};
-  /** Last aim point, so the sight stays where the player left it. */
-  private aim: Vec3 = { x: 0, y: BULL_Y, z: 0 };
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -102,14 +99,6 @@ export class Darts {
 
     this.hand = makeDart(0xd8f24a);
     this.scene.add(this.hand);
-    // Sight: where the dart should land with your normal throw (the circle is the usual spread).
-    const sightMat = new THREE.MeshBasicMaterial({ color: 0xd8f24a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: false });
-    this.aimDot = new THREE.Mesh(new THREE.RingGeometry(0.024, 0.031, 48), sightMat);
-    this.aimDot.add(new THREE.Mesh(new THREE.CircleGeometry(0.005, 16), sightMat));
-    const fill = new THREE.Mesh(new THREE.CircleGeometry(0.026, 48), new THREE.MeshBasicMaterial({ color: 0xd8f24a, transparent: true, opacity: 0.22, depthWrite: false, depthTest: false }));
-    this.aimDot.add(fill);
-    this.aimDot.renderOrder = 2;
-    this.scene.add(this.aimDot);
     this.restHand();
 
     const el = this.renderer.domElement;
@@ -250,18 +239,11 @@ export class Darts {
     this.renderer.domElement.setPointerCapture?.(e.pointerId);
     this.tracker.reset();
     this.tracker.add(e.timeStamp / 1000, 0, 0);
-    this.aim = aim;
   };
 
   private onMove = (e: PointerEvent) => {
     const g = this.grab;
-    if (!g) {
-      // Hover (mouse): the sight follows the pointer.
-      const a = this.live && e.pointerType === 'mouse' ? this.toBoard(e) : null;
-      if (a) this.aim = a;
-      return;
-    }
-    if (e.pointerId !== g.id) return;
+    if (!g || e.pointerId !== g.id) return;
     const h = this.renderer.domElement.clientHeight || 1;
     const events = e.getCoalescedEvents?.() ?? [];
     for (const c of events.length ? events : [e]) this.tracker.add(c.timeStamp / 1000, (c.clientX - 0) / h, (c.clientY - g.y0) / h);
@@ -323,8 +305,6 @@ export class Darts {
         this.land(f);
       }
     }
-    this.aimDot.visible = this.live && !this.flying && !this.turnOver;
-    this.aimDot.position.set(this.aim.x, this.aim.y, 0.003);
     if (this.hand.visible) {
       const target = HAND.z + this.pull * PULL;
       this.hand.position.z += (target - this.hand.position.z) * Math.min(1, dt * 25);

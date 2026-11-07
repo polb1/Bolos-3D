@@ -21,13 +21,18 @@ function tex(c: HTMLCanvasElement, repeat?: [number, number]) {
   return t;
 }
 
-/** Electronic board face: red/blue segments full of tip holes, same layout as a bristle board. */
+/**
+ * Electronic board face: deep red/blue segments made of tiny cells, darker singles like a real soft-tip board (numbers are lit on the panel). Returns the colour
+ * map and a bump map (cell holes) so the light picks up the honeycomb.
+ */
 function electronicBoard() {
-  const [c, g] = canvas(1024, 1024);
-  const cx = 512;
-  const px = 512 / BOARD_R; // pixels per metre (canvas edge = board edge)
-  g.fillStyle = '#0b0b10';
-  g.fillRect(0, 0, 1024, 1024);
+  const N = 2048;
+  const [c, g] = canvas(N, N);
+  const [bc, bg] = canvas(N, N);
+  const cx = N / 2;
+  const px = cx / BOARD_R; // pixels per metre (canvas edge = board edge)
+  g.fillStyle = '#0d0d12';
+  g.fillRect(0, 0, N, N);
   const ring = (r0: number, r1: number, a0: number, a1: number, color: string) => {
     g.fillStyle = color;
     g.beginPath();
@@ -36,47 +41,67 @@ function electronicBoard() {
     g.closePath();
     g.fill();
   };
+  const RED = '#c8102e';
+  const BLUE = '#0b3fb3';
+  const RED2 = '#9e0c24';
+  const BLUE2 = '#082f86';
   for (let i = 0; i < 20; i++) {
     const a0 = -Math.PI / 2 + ((i - 0.5) * Math.PI * 2) / 20;
     const a1 = a0 + (Math.PI * 2) / 20;
     const even = i % 2 === 0;
-    ring(R.outer, R.doubleOut, a0, a1, even ? '#b5172b' : '#1747b0');
-    ring(R.trebleIn, R.trebleOut, a0, a1, even ? '#1747b0' : '#b5172b');
-    ring(R.doubleIn, R.doubleOut, a0, a1, even ? '#1747b0' : '#b5172b');
+    ring(R.outer, R.trebleIn, a0, a1, even ? RED2 : BLUE2);
+    ring(R.trebleOut, R.doubleIn, a0, a1, even ? RED2 : BLUE2);
+    ring(R.trebleIn, R.trebleOut, a0, a1, even ? BLUE : RED);
+    ring(R.doubleIn, R.doubleOut, a0, a1, even ? BLUE : RED);
   }
-  ring(0, R.outer, 0, Math.PI * 2, '#1747b0');
-  ring(0, R.bull, 0, Math.PI * 2, '#b5172b');
-  // Tip holes: a fine grid of dark dots over the segments.
-  g.fillStyle = 'rgba(0,0,0,0.45)';
-  for (let y = 4; y < 1024; y += 9)
-    for (let x = 4 + ((y / 9) % 2) * 4.5; x < 1024; x += 9) {
-      if (Math.hypot(x - cx, y - cx) > R.doubleOut * px) continue;
+  ring(R.bull, R.outer, 0, Math.PI * 2, BLUE);
+  ring(0, R.bull, 0, Math.PI * 2, RED);
+  // Cells: each one gets a lighter rim and a dark hole (colour), and a pit (bump).
+  bg.fillStyle = '#fff';
+  bg.fillRect(0, 0, N, N);
+  const step = 15;
+  for (let y = step / 2; y < N; y += step * 0.866)
+    for (let x = ((Math.round(y / (step * 0.866)) % 2) * step) / 2; x < N; x += step) {
+      if (Math.hypot(x - cx, y - cx) > R.doubleOut * px - 3) continue;
+      g.fillStyle = 'rgba(255,255,255,0.10)';
       g.beginPath();
-      g.arc(x, y, 2.2, 0, Math.PI * 2);
+      g.arc(x, y, step * 0.46, 0, Math.PI * 2);
       g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.55)';
+      g.beginPath();
+      g.arc(x, y, step * 0.24, 0, Math.PI * 2);
+      g.fill();
+      bg.fillStyle = '#000';
+      bg.beginPath();
+      bg.arc(x, y, step * 0.3, 0, Math.PI * 2);
+      bg.fill();
     }
-  // Plastic spider between segments.
-  g.strokeStyle = '#d9dce4';
-  g.lineWidth = 3;
+  const map = tex(c);
+  const bump = new THREE.CanvasTexture(bc);
+  bump.anisotropy = 8;
+  return { map, bump };
+}
+
+/** Raised plastic spider: ring wires and radial dividers sitting on the face. */
+function spider() {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xe6e8ee, roughness: 0.35, metalness: 0.1 });
   for (const r of [R.bull, R.outer, R.trebleIn, R.trebleOut, R.doubleIn, R.doubleOut]) {
-    g.beginPath();
-    g.arc(cx, cx, r * px, 0, Math.PI * 2);
-    g.stroke();
+    const t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.0011, 6, Math.max(48, Math.round(r * 1200))), mat);
+    t.position.z = 0.001;
+    g.add(t);
   }
+  const len = R.doubleOut - R.outer;
+  const geo = new THREE.BoxGeometry(0.0016, len, 0.0026);
   for (let i = 0; i < 20; i++) {
-    const a = -Math.PI / 2 + ((i - 0.5) * Math.PI * 2) / 20;
-    g.beginPath();
-    g.moveTo(cx + Math.cos(a) * R.outer * px, cx + Math.sin(a) * R.outer * px);
-    g.lineTo(cx + Math.cos(a) * R.doubleOut * px, cx + Math.sin(a) * R.doubleOut * px);
-    g.stroke();
+    const a = ((i - 0.5) * Math.PI * 2) / 20;
+    const m = new THREE.Mesh(geo, mat);
+    const r = R.outer + len / 2;
+    m.position.set(Math.sin(a) * r, Math.cos(a) * r, 0.0013);
+    m.rotation.z = -a;
+    g.add(m);
   }
-  // Catch ring around the scoring area.
-  g.strokeStyle = '#1b1b22';
-  g.lineWidth = (BOARD_R - R.doubleOut) * px;
-  g.beginPath();
-  g.arc(cx, cx, (R.doubleOut + BOARD_R) * 0.5 * px, 0, Math.PI * 2);
-  g.stroke();
-  return tex(c);
+  return g;
 }
 
 /** Front panel around the board: blue grid, lit numbers and a ring of bulbs. */
@@ -244,10 +269,16 @@ export function buildRoom(): DartsRoom {
   panel.material.emissiveMap = panel.material.map;
   panel.position.set(0, BULL_Y - 0.02, -0.012);
   root.add(panel);
-  const board = new THREE.Mesh(new THREE.CircleGeometry(BOARD_R, 128), std({ map: electronicBoard(), roughness: 0.6 }));
+  const face = electronicBoard();
+  const board = new THREE.Mesh(new THREE.CircleGeometry(BOARD_R, 128), std({ map: face.map, bumpMap: face.bump, bumpScale: 1.2, roughness: 0.45, metalness: 0.05 }));
   board.position.set(0, BULL_Y, 0);
   board.receiveShadow = true;
-  root.add(board);
+  const wires = spider();
+  wires.position.set(0, BULL_Y, 0);
+  // Moulded black surround standing proud of the face.
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(BOARD_R + 0.004, 0.009, 12, 96), std({ color: 0x0c0c10, roughness: 0.4 }));
+  rim.position.set(0, BULL_Y, 0);
+  root.add(board, wires, rim);
   // Side cheeks so the panel sits recessed.
   for (const s of [-1, 1]) box(0.04, 1.0, 0.08, black, s * (W / 2 - 0.02), 1.6, 0.0);
   // LED scoreboard box on top.
