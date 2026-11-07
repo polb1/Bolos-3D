@@ -100,7 +100,7 @@ export function launch(from: Vec3, aim: Vec3, speed: number, ideal: number, side
   const t = d / ideal;
   let dy = aim.y - from.y + (G * t * t) / 2;
   // The trained arc already accounts for drag: refine the lift against the real flight.
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 8; i++) {
     const l = Math.hypot(dx, dy, dz);
     const hit = fly(from, { x: (dx / l) * ideal, y: (dy / l) * ideal, z: (dz / l) * ideal }).at;
     dy += aim.y - hit.y;

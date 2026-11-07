@@ -439,8 +439,9 @@ export class Darts {
       this.pull = 0; // not a throw: the dart stays in the hand
       return;
     }
-    // Strongly compressed: a finger flick varies far more than a trained arm does.
-    const speed = IDEAL * clamp((rel.forward / FLICK) ** 0.12, 0.6, 1.3);
+    // Strongly compressed: 5% more speed already lands ~10 cm higher, and a finger flick
+    // varies far more than a trained arm (a hard flick at T20 used to sail over the board).
+    const speed = IDEAL * clamp((rel.forward / FLICK) ** 0.05, 0.85, 1.08);
     this.throwDart(g.aim, speed, clamp(rel.angle * WRIST, -0.15, 0.15));
   };
 
