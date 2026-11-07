@@ -10,6 +10,7 @@ import { resolve } from '../world/collide';
 import { Hall, SPAWN } from './Hall';
 import { OUTFITS, useWorldStore } from '../world/worldStore';
 import { useHockeyStore } from '../games/airhockey/store';
+import { useDartsStore } from '../games/darts/store';
 import { net } from '../net/client';
 import { hockeyRef } from '../games/airhockey/instance';
 import { HockeyLobby, NET_OFFSET, SPOT_R, SPOTS, useLobbyStore } from './hockeyLobby';
@@ -175,6 +176,7 @@ export class World {
       w.setPlace(a.place!);
       if (a.place === 'bowling') useGameStore.getState().setScreen('menu');
       if (a.place === 'airhockey') useHockeyStore.getState().setScreen('menu');
+      if (a.place === 'darts') useDartsStore.getState().set({ screen: 'menu' });
       w.setFade(false);
       this.busy = false;
     }, FADE_MS);
@@ -318,7 +320,7 @@ export class World {
         this.ghosts.set(p.id, g);
       }
       if (g.outfit !== p.outfit) g.avatar.setOutfit(OUTFITS[(g.outfit = p.outfit)]?.outfit ?? OUTFITS[0].outfit);
-      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : 'air hockey'}`;
+      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : p.place === 'darts' ? 'dardos' : 'air hockey'}`;
       if (label !== g.label) this.setTag(g, label);
       // Facing and gait come from how far the eased position moved this frame.
       const vx = (x - g.lastX) / Math.max(dt, 1e-3);

@@ -5,8 +5,8 @@
  */
 
 /** Where a player is: walking the hall or inside a minigame. */
-export type NetPlace = 'world' | 'bowling' | 'airhockey';
-const PLACES: NetPlace[] = ['world', 'bowling', 'airhockey'];
+export type NetPlace = 'world' | 'bowling' | 'airhockey' | 'darts';
+const PLACES: NetPlace[] = ['world', 'bowling', 'airhockey', 'darts'];
 
 export const MAX_NAME = 16;
 export const MAX_MSG_BYTES = 2048;

@@ -367,8 +367,8 @@ body.touch-active .desktop-only { display: none; }
 body.touch-active .world-prompt { bottom: 190px; white-space: nowrap; }
 
 /* ---------- air hockey ---------- */
-#hockey-stage { position: absolute; inset: 0; touch-action: none; }
-#hockey-stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+#hockey-stage, #darts-stage { position: absolute; inset: 0; touch-action: none; }
+#hockey-stage canvas, #darts-stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .hockey-hud {
   position: absolute; top: 12px; left: 0; right: 0; margin: 0 auto; width: max-content; z-index: 10;
   display: flex; align-items: center; gap: 14px; padding: 6px 16px; border-radius: 12px;
@@ -436,3 +436,10 @@ body.touch-active .look-hint {
 .lobby-panel .btn { width: 100%; }
 .lobby-side { font-weight: 900; letter-spacing: 0.04em; }
 .lobby-panel .lobby-hint { font-size: 12px; margin: 8px 0 0; opacity: 0.8; }
+
+/* Darts: the current turn's three darts under the score */
+.darts-turn { position: absolute; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
+.darts-turn .dt { min-width: 46px; padding: 4px 8px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 14px; background: rgba(10, 16, 32, 0.6); color: rgba(255, 255, 255, 0.35); border: 1px solid rgba(255, 255, 255, 0.12); }
+.darts-turn .dt.done { color: #fff; border-color: rgba(216, 242, 74, 0.5); }
+.darts-turn .dt.sum { color: #ffd166; }
+.darts-banner { font-size: clamp(28px, 7vw, 56px); }

@@ -18,7 +18,7 @@ export const ACTIVITIES: Activity[] = [
   { id: 'bowling', name: 'Bolera', x: 9, y: 9, radius: 2.4, place: 'bowling', color: '#d8f24a' },
   { id: 'pool-1', name: 'Billar', x: 26, y: 7.3, radius: 1.8, place: null, color: '#4fb6ff' },
   { id: 'pool-2', name: 'Billar', x: 36, y: 7.3, radius: 1.8, place: null, color: '#4fb6ff' },
-  { id: 'darts', name: 'Dardos', x: 5.5, y: 16.5, radius: 2.4, place: null, color: '#ffb84f' },
+  { id: 'darts', name: 'Dardos', x: 5.5, y: 16.5, radius: 2.4, place: 'darts', color: '#ffb84f' },
   { id: 'airhockey-1', name: 'Air Hockey', x: 35, y: 15.8, radius: 1.3, place: 'airhockey', color: '#ff4f6e' },
   { id: 'airhockey-2', name: 'Air Hockey', x: 35, y: 20, radius: 1.3, place: 'airhockey', color: '#ff4f6e' },
   { id: 'foosball-1', name: 'Futbolín', x: 40, y: 15.8, radius: 1.3, place: null, color: '#7dffb0' },

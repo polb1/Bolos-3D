@@ -15,11 +15,14 @@ import { useWorldStore } from '../world/worldStore';
 import { hockeyRef } from '../games/airhockey/instance';
 import { AirHockeyUI } from './airhockey/AirHockeyUI';
 import { useHockeyStore } from '../games/airhockey/store';
+import { dartsRef } from '../games/darts/instance';
+import { DartsUI } from './darts/DartsUI';
 
 export function App() {
   const stageRef = useRef<HTMLDivElement>(null);
   const worldStageRef = useRef<HTMLDivElement>(null);
   const hockeyStageRef = useRef<HTMLDivElement>(null);
+  const dartsStageRef = useRef<HTMLDivElement>(null);
   const screen = useGameStore((s) => s.screen);
   const place = useWorldStore((s) => s.place);
   const worldScreen = useWorldStore((s) => s.screen);
@@ -29,17 +32,19 @@ export function App() {
     const st = useGameStore.getState();
     (async () => {
       try {
-        const [{ Game }, { World }, { AirHockey }] = await Promise.all([
+        const [{ Game }, { World }, { AirHockey }, { Darts }] = await Promise.all([
           import('../game/Game'),
           useWorldStore.getState().style === 'pixel' ? import('../world/World') : import('../world3d/World'),
           import('../games/airhockey/AirHockey'),
+          import('../games/darts/Darts'),
           initRapier(),
         ]);
-        if (cancelled || !stageRef.current || !worldStageRef.current || !hockeyStageRef.current || gameRef.current) return;
+        if (cancelled || !stageRef.current || !worldStageRef.current || !hockeyStageRef.current || !dartsStageRef.current || gameRef.current) return;
         gameRef.current = new Game(stageRef.current);
         worldRef.current = new World(worldStageRef.current);
         hockeyRef.current = new AirHockey(hockeyStageRef.current);
-        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current, __hockey: hockeyRef.current, __stores: { game: useGameStore, world: useWorldStore, hockey: useHockeyStore } }); // for browser testing
+        dartsRef.current = new Darts(dartsStageRef.current);
+        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current, __hockey: hockeyRef.current, __darts: dartsRef.current, __stores: { game: useGameStore, world: useWorldStore, hockey: useHockeyStore } }); // for browser testing
         st.setScreen('menu');
         useWorldStore.getState().setScreen('title');
       } catch (e) {
@@ -68,6 +73,7 @@ export function App() {
       <div id="stage" ref={stageRef} className={place === 'bowling' ? '' : 'hidden'} />
       <div id="world-stage" ref={worldStageRef} className={place === 'world' ? '' : 'hidden'} />
       <div id="hockey-stage" ref={hockeyStageRef} className={place === 'airhockey' ? '' : 'hidden'} />
+      <div id="darts-stage" ref={dartsStageRef} className={place === 'darts' ? '' : 'hidden'} />
       {(screen === 'loading' || worldScreen === 'loading') && <LoadingScreen />}
       {place === 'world' && worldScreen !== 'loading' && <WorldUI />}
       {place === 'bowling' && (
@@ -80,6 +86,7 @@ export function App() {
         </>
       )}
       {place === 'airhockey' && <AirHockeyUI />}
+      {place === 'darts' && <DartsUI />}
       <Fade />
     </>
   );

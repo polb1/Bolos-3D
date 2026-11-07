@@ -236,6 +236,22 @@ export class AudioEngine {
     o.stop(t + 1.3);
   }
 
+  // ------------------------------------------------------------------ darts
+  /** Steel tip biting into sisal: a short dull thock. `level` 0..1.2. */
+  dartHit(level: number) {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const src = this.noiseSource();
+    const lp = this.ctx.createBiquadFilter();
+    lp.frequency.value = 1400;
+    const g = this.ctx.createGain();
+    this.env(g, now, 0.7 * level, 0.001, 0.06);
+    src.connect(lp).connect(g).connect(this.master);
+    src.start(now);
+    src.stop(now + 0.1);
+    this.tone(180, 'sine', now, 0.4 * level, 0.08);
+  }
+
   // ------------------------------------------------------------------ air hockey
   /** Plastic clack: mallet on puck is fuller, rail hits thinner. `speed` in m/s. */
   hockeyHit(kind: 'mallet' | 'rail', speed: number) {
