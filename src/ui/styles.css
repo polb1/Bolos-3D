@@ -446,3 +446,4 @@ body.touch-active .look-hint {
 .darts-player { align-items: baseline; gap: 6px; opacity: 0.55; font-size: 17px; }
 .darts-player.turn { opacity: 1; }
 .darts-player .dp-name { font-size: 13px; font-weight: 700; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-buttons .opt-row { justify-content: center; }

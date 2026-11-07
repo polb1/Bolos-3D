@@ -161,7 +161,7 @@ export class Darts {
     oche.position.set(0, 0.006, OCHE);
     // Rules poster on the wall, left of the board.
     this.poster = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.364), new THREE.MeshStandardMaterial({ map: rulesPoster(), roughness: 0.8 }));
-    this.poster.position.set(-0.6, 1.72, -0.045);
+    this.poster.position.set(-0.52, 1.72, -0.045);
     s.add(cab, ring, face, oche, this.poster);
   }
 
@@ -453,8 +453,8 @@ export class Darts {
     this.renderer.setSize(w, h);
     const aspect = w / h;
     this.camera.aspect = aspect;
-    // Portrait: keep the machine's width (about ±13° from the eye, poster included) filling the screen.
-    this.camera.fov = Math.max(30, (2 * Math.atan(Math.tan((13 * Math.PI) / 180) / aspect) * 180) / Math.PI);
+    // Portrait: keep the board and the rules poster (about ±11° from the eye) filling the width.
+    this.camera.fov = Math.max(30, (2 * Math.atan(Math.tan((11 * Math.PI) / 180) / aspect) * 180) / Math.PI);
     this.gameCam.pos.set(0, 1.68, OCHE + 0.6);
     this.gameCam.look.set(0, BULL_Y - 0.12, 0);
     this.camera.updateProjectionMatrix();
