@@ -32,7 +32,7 @@ export function rulesPoster() {
   g.fillText('REGLAS · DARDOS', 500, 128);
   const sections: [string, string[]][] = [
     ['Cómo se lanza', ['Pulsa sobre el punto de la diana al que apuntas.', 'Sin soltar, echa la mano atrás (abajo) y lánzala hacia arriba soltando al final.', 'Gesto rápido: el dardo sube. Lento: cae. Torcido: se desvía.']],
-    ['Puntuación', ['Cada sector vale su número (1 a 20).', 'Anillo exterior estrecho: DOBLE (x2).', 'Anillo interior estrecho: TRIPLE (x3).', 'Anillo verde del centro: 25 · Punto rojo: 50.', 'Fuera del aro de dobles: 0.']],
+    ['Puntuación', ['Cada sector vale su número (1 a 20).', 'Anillo exterior estrecho: DOBLE (x2).', 'Anillo interior estrecho: TRIPLE (x3).', 'Anillo verde del centro: 25 · Punto rojo: 50.', 'Fuera del aro de dobles, o si rebota en el alambre o en otro dardo: 0.']],
     ['Partida 501', ['Empiezas con 501 y restas cada tirada de 3 dardos.', 'Para cerrar hay que acabar en un DOBLE o en el 50.', 'Si te pasas, te quedas en 1 o no cierras en doble: la tirada no cuenta (bust).']],
     ['Partida (IA u online)', ['Al mejor de 5 legs de 501: gana quien cierre 3.', 'Cada leg lo abre el otro jugador.']],
     ['Práctica libre', ['Sin límite: suma todo lo que marques.']],

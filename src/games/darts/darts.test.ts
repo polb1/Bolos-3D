@@ -78,3 +78,22 @@ describe('AI checkout choice', () => {
     }
   });
 });
+
+import { bounceOut, R, wireDistance } from './physics';
+
+describe('bounce-outs', () => {
+  it('measures the distance to rings and radial wires', () => {
+    expect(wireDistance(0, BULL_Y + R.trebleIn)).toBeCloseTo(0, 6);
+    // Middle of the 20 single bed: far from any wire.
+    expect(wireDistance(0, BULL_Y + 0.13)).toBeGreaterThan(0.02);
+    // On the divider between 20 and 1 (9° right of the top).
+    const a = (9 * Math.PI) / 180;
+    expect(wireDistance(Math.sin(a) * 0.13, BULL_Y + Math.cos(a) * 0.13)).toBeLessThan(1e-6);
+  });
+  it('bounces only square on a wire or onto another dart', () => {
+    expect(bounceOut(0, BULL_Y + R.doubleIn, [])).toBe('wire');
+    expect(bounceOut(0, BULL_Y + 0.13, [])).toBeNull();
+    expect(bounceOut(0, BULL_Y + 0.13, [{ x: 0.0005, y: BULL_Y + 0.1305 }])).toBe('dart');
+    expect(bounceOut(0, BULL_Y + 0.13, [{ x: 0.02, y: BULL_Y + 0.13 }])).toBeNull();
+  });
+});

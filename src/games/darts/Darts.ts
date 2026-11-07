@@ -8,7 +8,7 @@ import { net } from '../../net/client';
 import { buildLounge } from '../../world3d/lounge';
 import { dartboard } from '../../world3d/textures';
 import { useWorldStore } from '../../world/worldStore';
-import { aiTarget, apply501, BOARD_R, bedCentre, BULL_Y, DARTS_PER_TURN, fly, launch, LEGS_TO_WIN, OCHE, scoreAt, type DartsMode, type Flight, type Hit, type Vec3 } from './physics';
+import { aiTarget, apply501, BOARD_R, bedCentre, bounceOut, BULL_Y, DARTS_PER_TURN, fly, launch, LEGS_TO_WIN, OCHE, scoreAt, type DartsMode, type Flight, type Hit, type Vec3 } from './physics';
 import { rulesPoster } from './room';
 import { useDartsStore, type Opponent } from './store';
 
@@ -30,6 +30,8 @@ interface Flying {
   flight: Flight;
   t: number;
   hit: Hit;
+  /** Hit a wire or another dart square on: drops to the floor and scores nothing. */
+  bounced: 'wire' | 'dart' | null;
 }
 
 /** AI aim error (m, per axis) for easy / medium / expert: about 50, 30 and 20 darts per 501 leg (simulated). */
@@ -84,6 +86,10 @@ export class Darts {
   private readonly rng = createRng();
   private readonly hand: THREE.Group;
   private stuck: THREE.Group[] = [];
+  /** Where the darts in the board this visit have their points (a new dart can glance off them). */
+  private points: { x: number; y: number }[] = [];
+  /** The dart that just went in, still quivering. */
+  private wobble: { mesh: THREE.Group; t: number; base: THREE.Quaternion } | null = null;
   private flying: Flying | null = null;
   private grab: { id: number; y0: number; aim: Vec3 } | null = null;
   private pull = 0;
@@ -263,24 +269,27 @@ export class Darts {
 
   private launchDart(from: Vec3, v: Vec3, color: number) {
     const flight = fly(from, v);
-    const hit = flight.end === 'board' ? scoreAt(flight.at.x, flight.at.y) : { score: 0, mult: 0, label: 'FUERA' };
+    const bounced = flight.end === 'board' ? bounceOut(flight.at.x, flight.at.y, this.points) : null;
+    const hit = flight.end !== 'board' ? { score: 0, mult: 0, label: 'FUERA' } : bounced ? { score: 0, mult: 0, label: 'REBOTE' } : scoreAt(flight.at.x, flight.at.y);
     const mesh = makeDart(color);
     this.scene.add(mesh);
-    this.flying = { mesh, flight, t: 0, hit };
+    this.flying = { mesh, flight, t: 0, hit, bounced };
     audio.release();
   }
 
   /** The flying dart reached its end: stick it, score it, move the turn on. */
   private land(f: Flying) {
     const st = useDartsStore.getState();
-    const { flight, hit, mesh } = f;
-    if (flight.end === 'board') {
+    const { flight, hit, mesh, bounced } = f;
+    if (flight.end === 'board' && !bounced) {
       audio.dartHit(clamp(Math.hypot(flight.v.x, flight.v.y, flight.v.z) / IDEAL, 0.3, 1.2));
       this.stuck.push(mesh);
+      this.points.push({ x: flight.at.x, y: flight.at.y });
+      this.wobble = { mesh, t: 0, base: mesh.quaternion.clone() };
     } else {
-      // Bounced off the wall or fell short: it ends on the floor below.
-      audio.hockeyHit('rail', 3);
-      mesh.position.set(flight.at.x, 0.006, Math.max(0.15, flight.at.z));
+      // Bounced off a wire, another dart or the wall, or fell short: it ends on the floor below.
+      audio.hockeyHit('rail', bounced ? 6 : 3);
+      mesh.position.set(flight.at.x, 0.006, Math.max(0.15, flight.at.z) + (bounced ? 0.2 + this.rng() * 0.3 : 0));
       mesh.rotation.set(0, this.rng() * Math.PI * 2, 0); // lying flat
       this.stuck.push(mesh);
     }
@@ -326,6 +335,8 @@ export class Darts {
   private clearBoard() {
     for (const d of this.stuck) this.scene.remove(d);
     this.stuck = [];
+    this.points = [];
+    this.wobble = null;
   }
 
   /** Darts collected from the board: next visit (the other player's, in a match). */
@@ -503,6 +514,17 @@ export class Darts {
       if (i >= path.length - 1) {
         this.flying = null;
         this.land(f);
+      }
+    }
+    const w = this.wobble;
+    if (w) {
+      // A stuck dart quivers for a moment around where it went in.
+      w.t += dt;
+      const a = 0.05 * Math.exp(-w.t * 9) * Math.sin(w.t * 70);
+      w.mesh.quaternion.copy(w.base).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), a));
+      if (w.t > 0.6) {
+        w.mesh.quaternion.copy(w.base);
+        this.wobble = null;
       }
     }
     if (this.hand.visible) {

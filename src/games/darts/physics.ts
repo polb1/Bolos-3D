@@ -36,6 +36,36 @@ export function scoreAt(x: number, y: number): Hit {
   return { score: n, mult: 1, label: String(n) };
 }
 
+/** Half-width (m) of the strip of spider wire a dart point has to hit square on to bounce out (~2% of an expert's darts). */
+export const WIRE = 0.0001;
+/** A new dart landing this close (m) to another dart's point glances off its barrel. */
+export const DART_GAP = 0.0015;
+
+/** Distance (m) from (x, y) on the board face to the nearest spider wire (rings and radial dividers). */
+export function wireDistance(x: number, y: number): number {
+  const dy = y - BULL_Y;
+  const r = Math.hypot(x, dy);
+  let d = Infinity;
+  for (const ring of [R.bull, R.outer, R.trebleIn, R.trebleOut, R.doubleIn, R.doubleOut]) d = Math.min(d, Math.abs(r - ring));
+  if (r >= R.outer && r <= R.doubleOut) {
+    // Dividers sit half a sector either side of each number's centre line.
+    const step = (Math.PI * 2) / 20;
+    const u = Math.atan2(x, dy) / step - 0.5;
+    const f = u - Math.floor(u);
+    d = Math.min(d, r * Math.sin(Math.min(f, 1 - f) * step));
+  }
+  return d;
+}
+
+/**
+ * Whether a dart reaching the face at (x, y) fails to stick: square on a wire, or onto a dart
+ * already in the board. Pure geometry, so both sides of an online match agree. Scores 0.
+ */
+export function bounceOut(x: number, y: number, others: ReadonlyArray<{ x: number; y: number }>): 'wire' | 'dart' | null {
+  if (wireDistance(x, y) < WIRE) return 'wire';
+  return others.some((o) => Math.hypot(x - o.x, y - o.y) < DART_GAP) ? 'dart' : null;
+}
+
 export interface Vec3 {
   x: number;
   y: number;

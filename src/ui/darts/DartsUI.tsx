@@ -105,6 +105,7 @@ function Controls() {
           <li><b>Fuerza</b>: un gesto más rápido que tu tiro normal sube el dardo; uno más lento lo deja caer. Un gesto torcido lo desvía.</li>
           <li><b>501</b>: empiezas en 501 y restas cada tirada de 3 dardos. Hay que cerrar en doble (o en la diana, 50). Si te pasas, te quedas en 1 o cierras sin doble, la tirada no cuenta.</li>
           <li><b>Partida</b>: contra la IA u online se juega al mejor de {LEGS_TO_WIN * 2 - 1} legs; cada leg lo abre el otro jugador.</li>
+          <li><b>Rebotes</b>: un dardo que da de lleno en el alambre o en otro dardo cae al suelo y no puntúa, como en una diana de verdad.</li>
           <li><b>Reglas</b>: en la partida, toca el cartel de la pared y la cámara se acerca para leerlo.</li>
         </ul>
         <button className="btn primary" onClick={click(toMenu)}>
