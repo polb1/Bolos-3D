@@ -13,7 +13,8 @@ const click = (fn: () => void) => () => {
 };
 
 const start = (m: DartsMode) => click(() => dartsRef.current?.start(m));
-const toMenu = () => useDartsStore.getState().set({ screen: 'menu' });
+const toMenu = () => useDartsStore.getState().set({ screen: 'menu', poster: false });
+const closePoster = () => dartsRef.current?.setPoster(false);
 
 function useEsc(fn: () => void) {
   useEffect(() => {
@@ -65,6 +66,7 @@ function Controls() {
           <li><b>Lanza</b>: sin soltar, echa la mano atrás (abajo) y lánzala hacia arriba soltando al final.</li>
           <li><b>Fuerza</b>: un gesto más rápido que tu tiro normal sube el dardo; uno más lento lo deja caer. Un gesto torcido lo desvía.</li>
           <li><b>501</b>: empiezas en 501 y restas cada tirada de 3 dardos. Hay que cerrar en doble (o en la diana, 50). Si te pasas, te quedas en 1 o cierras sin doble, la tirada no cuenta.</li>
+          <li><b>Reglas</b>: en la partida, toca el cartel de la pared y la cámara se acerca para leerlo.</li>
         </ul>
         <button className="btn primary" onClick={click(toMenu)}>
           Volver
@@ -74,9 +76,19 @@ function Controls() {
   );
 }
 
+function PosterClose() {
+  useEsc(closePoster);
+  return (
+    <div className="hud-corner right">
+      <button className="btn primary" onClick={closePoster}>✕ Cerrar reglas</button>
+    </div>
+  );
+}
+
 function Hud() {
-  const { mode, points, round, hits, banner, turnStart } = useDartsStore();
-  useEsc(toMenu);
+  const { mode, points, round, hits, banner, turnStart, poster } = useDartsStore();
+  useEsc(poster ? () => {} : toMenu);
+  if (poster) return <PosterClose />;
   return (
     <>
       <div className="hockey-hud">

@@ -16,6 +16,8 @@ interface DartsState {
   /** Banner over the board: last dart, bust, game shot. */
   banner: { text: string; kind: 'hit' | 'bust' | 'win' | 'miss'; n: number } | null;
   darts: number;
+  /** Camera zoomed onto the rules poster. */
+  poster: boolean;
   set(p: Partial<Omit<DartsState, 'set'>>): void;
 }
 
@@ -28,5 +30,6 @@ export const useDartsStore = create<DartsState>((set) => ({
   hits: [],
   banner: null,
   darts: 0,
+  poster: false,
   set: (p) => set(p),
 }));

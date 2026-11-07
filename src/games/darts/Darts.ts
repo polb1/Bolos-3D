@@ -81,6 +81,10 @@ export class Darts {
   private last = performance.now();
   private bannerN = 0;
   private display: (big: string, small: string) => void = () => {};
+  private poster!: THREE.Mesh;
+  /** 0 = at the oche, 1 = in front of the rules poster. */
+  private view = 0;
+  private readonly gameCam = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -117,6 +121,7 @@ export class Darts {
     s.add(new THREE.HemisphereLight(0xffd9b0, 0x1a0f0a, 0.5));
     const room = buildRoom();
     this.display = room.setDisplay;
+    this.poster = room.poster;
     s.add(room.root);
     // Throw line (oche).
     const oche = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.012, 0.04), new THREE.MeshStandardMaterial({ color: 0xd8f24a, emissive: 0x6a7a10, roughness: 0.5 }));
@@ -231,7 +236,17 @@ export class Darts {
     return { x: dx * k, y: BULL_Y + dy * k, z: 0 };
   }
 
+  /** Opens or closes the rules poster close-up. */
+  setPoster(open: boolean) {
+    audio.ui();
+    useDartsStore.getState().set({ poster: open });
+  }
+
   private onDown = (e: PointerEvent) => {
+    if (useDartsStore.getState().poster) return this.setPoster(false);
+    const r = this.renderer.domElement.getBoundingClientRect();
+    this.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
+    if (this.live && !this.grab && this.ray.intersectObject(this.poster).length) return this.setPoster(true);
     if (!this.live || this.grab || this.flying || this.turnOver) return;
     const aim = this.toBoard(e);
     if (!aim) return;
@@ -278,12 +293,26 @@ export class Darts {
     this.renderer.setSize(w, h);
     const aspect = w / h;
     this.camera.aspect = aspect;
-    // Portrait: keep the machine's width (about ±9.5° from the eye) filling the screen.
-    this.camera.fov = Math.max(30, (2 * Math.atan(Math.tan((9.5 * Math.PI) / 180) / aspect) * 180) / Math.PI);
-    this.camera.position.set(0, 1.68, OCHE + 0.6);
-    this.camera.lookAt(0, BULL_Y - 0.12, 0);
+    // Portrait: keep the machine's width (about ±13° from the eye, poster included) filling the screen.
+    this.camera.fov = Math.max(30, (2 * Math.atan(Math.tan((13 * Math.PI) / 180) / aspect) * 180) / Math.PI);
+    this.gameCam.pos.set(0, 1.68, OCHE + 0.6);
+    this.gameCam.look.set(0, BULL_Y - 0.12, 0);
     this.camera.updateProjectionMatrix();
+    this.placeCamera();
   };
+
+  /** Blends the oche view and a close-up that fits the whole poster on screen. */
+  private placeCamera() {
+    const c = this.camera;
+    const P = this.poster.position;
+    const g = this.gameCam;
+    const p = (this.poster.geometry as THREE.PlaneGeometry).parameters;
+    const tv = Math.tan((c.fov * Math.PI) / 360);
+    const d = Math.max(p.height / 2 / tv, p.width / 2 / (tv * c.aspect)) * 1.12;
+    const k = this.view * this.view * (3 - 2 * this.view);
+    c.position.lerpVectors(g.pos, new THREE.Vector3(P.x, P.y, P.z + d), k);
+    c.lookAt(new THREE.Vector3().lerpVectors(g.look, P, k));
+  }
 
   /** One simulation + render step (exposed for browser testing). */
   frame(dt: number) {
@@ -316,6 +345,11 @@ export class Darts {
         this.hand.lookAt(2 * h.x - a.x, 2 * h.y - a.y - 0.25, 2 * h.z - a.z);
       }
     }
+    const want = useDartsStore.getState().poster ? 1 : 0;
+    if (want !== this.view) {
+      this.view = want > this.view ? Math.min(1, this.view + dt * 1.4) : Math.max(0, this.view - dt * 1.4);
+    }
+    this.placeCamera();
     this.renderer.render(this.scene, this.camera);
   }
 
