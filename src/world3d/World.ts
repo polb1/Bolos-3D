@@ -463,6 +463,7 @@ export class World {
     net.tick(dt, { x: this.pos.x + NET_OFFSET, y: this.pos.z + NET_OFFSET, dir: 0, moving: sp > 0.2, place: useWorldStore.getState().place });
     if (!this.live) return; // an activity owns the screen; the hall is frozen as left
     this.time += dt;
+    this.hall.update(this.time);
     const w = useWorldStore.getState();
     if (w.screen === 'explore') this.move(dt);
     else this.vel.multiplyScalar(0);

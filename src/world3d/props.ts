@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { airHockeyTop, arcadeScreen, dartboard, darkWood, foosballPitch, painting, rug as rugTexture, signBoard } from './textures';
+import { airHockeyTop, arcadeScreen, brick, dartboard, darkWood, foosballPitch, painting, rug as rugTexture, signBoard } from './textures';
 
 /** Furniture and machines for the hall. Every builder returns a group standing on y = 0. */
 
@@ -377,6 +377,48 @@ export function rug(w: number, d: number, colors: [string, string, string]) {
   const m = mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: rugTexture(...colors), roughness: 1 }), 0, 0.006, 0);
   m.rotation.x = -Math.PI / 2;
   return m;
+}
+
+/**
+ * Brick fireplace with a wooden mantel, burning logs and a chimney breast up to `height`
+ * (faces +z, back on the wall). `flames` are animated by the hall.
+ */
+export function fireplace(height: number) {
+  const g = new THREE.Group();
+  const bricks = new THREE.MeshStandardMaterial({ map: brick([2, 1.5]), roughness: 0.95 });
+  // Brick surround around an open firebox (0.95 × 0.75 m, its floor 0.12 m up).
+  for (const s of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(0.425, 1.25, 0.45), bricks, s * 0.6875, 0.625, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.95, 0.38, 0.45), bricks, 0, 1.06, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.95, 0.12, 0.45), bricks, 0, 0.06, 0));
+  const soot = std(0x0d0806, 1);
+  g.add(mesh(new THREE.BoxGeometry(0.95, 0.75, 0.05), soot, 0, 0.495, -0.2));
+  for (const s of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(0.02, 0.75, 0.4), soot, s * 0.465, 0.495, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.95, 0.02, 0.4), soot, 0, 0.865, 0));
+  g.add(mesh(new THREE.BoxGeometry(1.3, height - 1.25, 0.32), new THREE.MeshStandardMaterial({ map: brick([1.5, 3]), roughness: 0.95 }), 0, 1.25 + (height - 1.25) / 2, -0.06));
+  g.add(mesh(new THREE.BoxGeometry(2.1, 0.08, 0.55), wood, 0, 1.29, 0.04)); // mantel
+  g.add(mesh(new THREE.BoxGeometry(2.0, 0.06, 0.75), std(0x6a6058, 0.8), 0, 0.03, 0.3)); // hearth stone
+  // Logs and embers.
+  const logMat = std(0x3a2414, 0.9);
+  for (const [x, rz, y] of [[-0.12, 0.2, 0.2], [0.14, -0.25, 0.2], [0, 0, 0.3]] as const) {
+    const log = mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.6, 10), logMat, x, y, 0.02);
+    log.rotation.set(0, 0, Math.PI / 2 + rz);
+    g.add(log);
+  }
+  g.add(mesh(new THREE.BoxGeometry(0.7, 0.03, 0.22), glow(0xff5a1a, 1.4), 0, 0.14, 0.02));
+  const flames = new THREE.Group();
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xff9a3a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  for (const [x, h] of [[-0.18, 0.32], [0, 0.42], [0.17, 0.3]] as const) {
+    flames.add(mesh(new THREE.ConeGeometry(0.09, h, 10, 1, true), flameMat, x, 0.3 + h / 2, 0.04));
+    flames.add(mesh(new THREE.ConeGeometry(0.045, h * 0.6, 8, 1, true), coreMat, x, 0.3 + h * 0.3, 0.05));
+  }
+  g.add(flames);
+  // A few things on the mantel.
+  g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 10), std(0xf3ead2, 0.6), -0.75, 1.43, 0.05));
+  g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.14, 10), std(0xf3ead2, 0.6), -0.65, 1.4, 0.05));
+  g.add(mesh(new THREE.BoxGeometry(0.22, 0.26, 0.08), std(0x2a1a10, 0.5), 0.7, 1.46, 0.02)); // clock
+  g.add(mesh(new THREE.CircleGeometry(0.08, 20), std(0xf3ead2, 0.5), 0.7, 1.47, 0.065));
+  return { group: g, flames };
 }
 
 /** Small round side table. */

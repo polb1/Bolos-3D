@@ -28,6 +28,7 @@ export class Hall {
   readonly group = new THREE.Group();
   readonly colliders: Box[] = [];
   readonly occluders: THREE.Object3D[] = [];
+  private fire: { flames: THREE.Group; light: THREE.PointLight } | null = null;
 
   constructor() {
     this.shell();
@@ -267,14 +268,21 @@ export class Hall {
   /** Reading corner: rug, velvet sofas, armchair, books and a floor lamp. */
   private lounge() {
     const rug = P.rug(4.2, 3.2, ['#8a3b2a', '#3f2a1e', '#d8b98a']);
-    rug.position.set(-12.8, 0.006, 11);
+    rug.position.set(-13, 0.006, 10.8);
     this.group.add(rug);
-    this.put(P.sofa(0x5b6b3a), -12.5, 12.9, Math.PI, [2, 0.85]);
-    this.put(P.sofa(0x7a3b2a), -15.1, 10, Math.PI / 2, [2, 0.85]);
-    this.put(P.armchair(0xb07a3a), -10.6, 9.4, -1.07, [0.85, 0.8]); // facing the coffee table
-    this.put(P.coffeeTable(), -12.6, 10.5, 0, [1.1, 0.65]);
+    // Fireplace on the west wall; sofas and an armchair gathered round it.
+    const fp = P.fireplace(H);
+    this.put(fp.group, -HX + 0.23, 10.8, Math.PI / 2, [1.8, 1.2]);
+    const fireLight = new THREE.PointLight(0xff9a4a, 6, 6, 1.6);
+    fireLight.position.set(-HX + 0.9, 0.7, 10.8);
+    this.group.add(fireLight);
+    this.fire = { flames: fp.flames, light: fireLight };
+    this.put(P.sofa(0x5b6b3a), -12.9, 12.9, Math.PI, [2, 0.85]);
+    this.put(P.sofa(0x7a3b2a), -11.3, 10.8, -Math.PI / 2, [2, 0.85]);
+    this.put(P.armchair(0xb07a3a), -13.5, 8.9, -0.35, [0.85, 0.8]); // between the table and the fire
+    this.put(P.coffeeTable(), -13.2, 10.8, Math.PI / 2, [1.1, 0.65]);
     this.put(P.floorLamp(), -15.2, 12.9, 0, [0.4, 0.4]);
-    this.put(P.sideTable(), -11.1, 12.9, 0, [0.5, 0.5]);
+    this.put(P.sideTable(), -11.3, 12.9, 0, [0.5, 0.5]);
     this.onWall(P.bookshelf(1.8, 2.2), 'w', 7.6, 0);
     this.onWall(P.frame(21, 1.1, 0.8), 's', -12.5, 2.3);
     const l = new THREE.PointLight(WARM, 8, 7, 1.5);
@@ -349,6 +357,18 @@ export class Hall {
       p.position.set(x, H, z);
       this.group.add(p);
     }
+  }
+
+  /** Flickers the fire (call every frame with the running time in seconds). */
+  update(t: number) {
+    const f = this.fire;
+    if (!f) return;
+    const n = Math.sin(t * 9.1) * 0.5 + Math.sin(t * 13.7 + 1.3) * 0.3 + Math.sin(t * 23.3) * 0.2;
+    f.light.intensity = 6 + n * 1.6;
+    f.flames.children.forEach((m, i) => {
+      m.scale.y = 1 + 0.18 * Math.sin(t * (8 + i * 1.7) + i);
+      m.scale.x = m.scale.z = 1 + 0.08 * Math.sin(t * (11 + i) + i * 2);
+    });
   }
 
   private lights() {
