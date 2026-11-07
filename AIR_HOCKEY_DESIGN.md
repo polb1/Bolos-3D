@@ -72,7 +72,7 @@ src/games/airhockey/
   table.ts     mesa 3D, marcador en canvas, mazos y disco
   AirHockey.ts escena, cámara, entrada (ratón, táctil, teclado), flujo de partida y audio
   airhockey.test.ts
-src/ui/airhockey/AirHockeyUI.tsx  menú, ajustes, controles, HUD, pausa y final
+src/games/airhockey/ui/AirHockeyUI.tsx  menú, ajustes, controles, HUD, pausa y final
 ```
 Se entra desde las dos mesas de air hockey del local en pixel art, con `place: 'airhockey'`.
 

@@ -1,56 +1,41 @@
-# Bolera 3D — contexto para Claude
+# Virtual Arcade — contexto para Claude
 
-Simulador de bolos de diez en el navegador. Repo: https://github.com/polb1/Bolos-3D (rama `main`). Lee también `README.md` y `REVERSE_ENGINEERING.md`. Responde en español.
+Salón de juegos en el navegador: un local 3D en tercera persona con bolera, air hockey y dardos jugables (billar, futbolín y recreativas aún «Próximamente»). Repo: https://github.com/polb1/Bolos-3D. Lee también `README.md`, `ARCHITECTURE.md` y `REVERSE_ENGINEERING.md`. Responde en español.
 
-## Origen
-Reconstrucción inspirada en https://padel-mto1.onrender.com/ (simulador de pádel 3D). De la referencia se toman el estilo y la estructura, nunca sus recursos: azul marino `#0a1020`, acento lima `#d8f24a`, puntuaciones en dorado, paneles de cristal con desenfoque, menú central con chips, ajustes en pestañas, banner central y barras de cine.
+## Estilo visual (decisión del usuario, nov 2026)
+Local cálido y acogedor, nada futurista ni neones: suelo de roble, yeso con zócalo de madera, ladrillo tras la barra, vigas, lámparas colgantes de luz cálida, alfombras, sofás, cuadros y plantas. Rótulos de madera pintada (`woodSign`). La interfaz usa paneles color espresso, texto crema y acento ámbar (`--lime` y `--blue-*` en `styles.css` conservan el nombre antiguo: son el acento y los tonos suaves). Los minijuegos ocurren dentro del mismo salón (`world3d/lounge.ts`).
 
 ## Stack
-Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo dentro de la clase `Game` + Rapier (`@dimforge/rapier3d-compat`) + Web Audio sintetizado (sin archivos de audio) + Vitest.
+Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo (cada juego es una clase con su `renderer`) + Rapier (`@dimforge/rapier3d-compat`, solo bolera) + Web Audio sintetizado (sin archivos de audio) + Vitest. Todas las texturas son procedurales (`utils/canvas.ts`).
 
-## Virtual Arcade (local en pixel art)
-El juego arranca en un centro recreativo 3D en tercera persona (`src/world3d/`, por defecto) o, eligiéndolo en la portada, en el mapa 2D pixel art por salas (`src/world/`); los juegos son 3D. Cada estilo usa su propia copia de la sala online (sufijo `-pixel`). Decisiones y etapas en `ARCHITECTURE.md`.
-- `world/`: `World` (canvas 2D con zoom entero, bucle, movimiento, cámara, salas atenuadas, entrada/salida de actividades), `map` (salas, puertas, muebles), `sprites` (todo dibujado por código píxel a píxel), `collide` (círculo contra cajas), `activities` (registro en casillas), `worldStore`.
-- Solo se dibuja la capa activa (`useWorldStore.place`): `#world-stage` o `#stage` (bolos 3D). Al volver, el personaje sigue donde estaba.
-- **Air hockey** (`src/games/airhockey/`, diseño en `AIR_HOCKEY_DESIGN.md`): física 2D propia y sin gráficos con tests, IA por niveles, modos contra la IA, dos jugadores y entrenamiento. Interfaz en `src/ui/airhockey/`; `window.__hockey.frame(dt)` para probarlo.
-- Billar, futbolín, dardos y recreativas están colocados y muestran «Próximamente»: cada uno irá en `src/games/<id>/` en 3D.
-- En desarrollo, `window.__world` y `window.__game` permiten probar desde la consola; `__world.frame(dt)` avanza un paso aunque el panel del navegador esté oculto.
+## Estructura (`src/`)
+- `world3d/`: local 3D por defecto. `World` (bucle, movimiento, cámara, entrada/salida de actividades), `Hall` (el edificio y sus zonas), `props` (muebles), `textures`, `lounge` (sala compartida por los minijuegos), `activities` (puntos de juego), `hockeyLobby` (círculos online).
+- `world/`: local alternativo en pixel art 2D, y lo compartido por ambos locales: `worldStore`, `instance`, `collide`.
+- `games/bowling/`: la bolera (ver abajo). `games/airhockey/`: física 2D propia con tests, IA por niveles, online 1 contra 1 (diseño en `AIR_HOCKEY_DESIGN.md`). `games/darts/`: dardos. Cada juego lleva su interfaz en `games/<id>/ui/`.
+- `net/`: cliente y protocolo de la sala online (servidor en `server/`). `audio/`, `config/settings.ts` (ajustes y calidad), `ui/` (App, portada, carga, `common.ts` con `click`/`useEsc`), `utils/` (matemáticas, aleatorio con semilla, `SwingTracker`, `canvas`).
+- Solo se dibuja la capa activa (`useWorldStore.place`). Al volver, el personaje sigue donde estaba.
 
-## Arquitectura de la bolera (`src/`)
-- `config/`: `constants.ts` (medidas reglamentarias y parámetros físicos), `settings.ts`.
-- `physics/PhysicsWorld.ts`: mundo de Rapier.
-  - Pista con zona aceitada (μ 0,02, primeros 12,2 m) y zona seca (μ 0,26): de ahí sale el gancho, sin programarlo.
-  - Canaletas, foso, bolos (casco convexo del perfil real) y bola.
-  - Imperfecciones con semilla (`setVariation`): desnivel de la pista distinto en cada partida y tolerancias de los bolos.
-  - Detección: bolos derribados (`isPinDown`, inclinación >32° o fuera de la plataforma) y bolos que se tambalean sin caer (`wobblers`).
-- `scoring/scoring.ts`: reglas oficiales como funciones puras.
-- `game/`:
-  - `Game.ts`: bucle principal, fases, cámara y lanzamiento.
-  - `SwingTracker.ts`: convierte el arrastre en tiro (velocidad y dirección de los últimos ~80 ms; la curva final del gesto da efecto).
-  - `PinRack.ts`: recolocadora animada (barra de protección, mesa que levanta los bolos en pie, barrido al foso, recolocación o juego nuevo).
-  - `match.ts`: turnos, splits y textos del banner.
-  - `Input.ts`.
-- `scene/`:
-  - `Alley.ts`: bolera, pistas vecinas y luces.
-  - `Monitor.ts`: tele sobre la pista. Muestra la puntuación y, tras un strike o spare, la cámara va a ella para un clip animado propio dibujado en canvas, que se puede saltar.
-  - `pinMesh.ts`, `textures.ts` (todas las texturas son procedurales).
-- `audio/`, `store/useGameStore.ts`, `ui/`, `utils/`.
+## Bolera (`games/bowling/`)
+- `constants.ts`: medidas reglamentarias y parámetros físicos.
+- `physics/PhysicsWorld.ts`: pista con zona aceitada (μ 0,02, primeros 12,2 m) y seca (μ 0,26), de ahí sale el gancho; bolos con el casco convexo del perfil real; imperfecciones con semilla; bolos derribados y bolos que se tambalean.
+- `scoring/`: reglas oficiales como funciones puras. `game/`: `Game` (bucle, fases, cámara, lanzamiento), `PinRack` (recolocadora), `match`, `ai`, `Input`. `scene/`: `Alley`, `Monitor` (tele con clip tras strike/spare), `pinMesh`, `textures`. `store/useGameStore.ts`. `ui/`.
+
+## Dardos (`games/darts/`)
+- `physics.ts` (puro, con tests): radios reglamentarios, `scoreAt`, vuelo con gravedad y rozamiento (`fly`), `launch`, 501 con doble salida, rebotes en el alambre o contra otro dardo (`bounceOut`, geometría pura para que el online coincida), objetivos de la IA (`aiTarget`, `bedCentre`).
+- `Darts.ts`: escena, gesto (pulsar = apuntar, echar atrás y lanzar), partidas al mejor de 5 legs contra la IA (Fácil/Media/Experta ≈ 50/30/20 dardos por leg) u online (se envían origen y velocidad del tiro; ambos lados simulan lo mismo). Cartel de reglas clicable con zoom (`poster.ts`).
+- La fuerza del gesto cambia poco la velocidad (exponente 0,05): un 5 % más de velocidad ya sube el dardo ~10 cm.
 
 ## Decisiones del usuario (no deshacer)
-- **Lanzamiento:**
-  - Sin barra de potencia ni línea de tiro: se agarra la bola, se echa atrás y se suelta hacia los bolos.
-  - La bola no cruza la línea de falta al arrastrar: al llegar a ella sale sola con la velocidad de la mano.
-  - `Q`/`E` o la rueda dan un efecto de muñeca previo.
-- **Dificultad alta:** dispersión humana en la suelta y bolos que pueden tambalearse sin caer. Los resultados siempre salen de la física, nunca de un aleatorio sin relación con ella.
-- **Online:** la base está en `ONLINE.md`: sala por `?sala=`, servidor `npm run server` y jugadores visibles en el local. El juego debe seguir funcionando sin servidor.
+- **Bolera:** sin barra de potencia ni línea de tiro: se agarra la bola, se echa atrás y se suelta; al llegar a la línea de falta sale sola con la velocidad de la mano; `Q`/`E` o la rueda dan efecto. Dispersión humana y bolos que pueden tambalearse; los resultados siempre salen de la física.
+- **Dardos:** primer diseño (diana clásica de bar, pared lisa), sin mira, dardo centrado abajo, línea a 2,37 m.
+- **Online:** sala por `?sala=`, servidor `npm run server`; el juego debe funcionar sin servidor. Render despliega a mano (Manual Deploy) y el servidor se redespliega con el cliente.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (64 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (76 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
 
 ## Pruebas en navegador
-El navegador integrado de la app no tenía WebGL; se probó con Chrome headless + SwiftShader (`--use-angle=swiftshader --enable-unsafe-swiftshader`) y puppeteer-core. En headless los eventos del ratón llegan espaciados y la velocidad del gesto sale falsa. Para medirla bien, envía los eventos por CDP con `Input.dispatchMouseEvent` y un `timestamp` explícito.
+En desarrollo `window.__world`, `__game`, `__hockey`, `__darts` y `__stores` están expuestos. Todos tienen `frame(dt)` para avanzar a mano: el panel del navegador integrado suele estar oculto y entonces `requestAnimationFrame` no corre. Para entrar en un juego: `__world.enter()`, poner `__world.pos` sobre la actividad, `__world.frame(0.016)` y `__world.interact()`. En headless los eventos del ratón llegan espaciados y la velocidad de un gesto sale falsa.
 
 ## Pendiente / sin verificar
-- Probar con GPU real: sensación del arrastre, velocidad de un gesto rápido, sonido.
-- Clip de la tele en móvil.
-- Ver el juego nuevo que baja tras un strike.
+- Probar con GPU, ratón y dedo reales: sensación de los gestos, rendimiento del local en móviles modestos, sonido.
+- Billar, futbolín y recreativas siguen sin juego.
