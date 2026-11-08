@@ -442,6 +442,8 @@ body.touch-active .look-hint {
 .darts-turn .dt { min-width: 46px; padding: 4px 8px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 14px; background: rgba(27, 21, 15, 0.6); color: rgba(255, 255, 255, 0.35); border: 1px solid rgba(255, 255, 255, 0.12); }
 .darts-turn .dt.done { color: #ffffff; border-color: rgba(236, 163, 55, 0.5); }
 .darts-turn .dt.sum { color: #ffd166; }
+.darts-checkout { position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 6px 14px; border-radius: 10px; background: rgba(27, 21, 15, 0.78); border: 1px solid rgba(236, 163, 55, 0.45); color: #f3ead2; font-size: 14px; text-align: center; pointer-events: none; }
+.darts-checkout b { color: #ffd166; }
 .darts-banner { font-size: clamp(28px, 7vw, 56px); }
 .darts-player { align-items: baseline; gap: 6px; opacity: 0.55; font-size: 17px; }
 .darts-player.turn { opacity: 1; }

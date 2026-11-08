@@ -196,3 +196,49 @@ export function aiTarget(left: number): { n: number; mult: number } {
   // Keep away from finishing on 1: T19 when T20 would leave an impossible score.
   return left - 60 > 1 ? { n: 20, mult: 3 } : { n: 19, mult: 3 };
 }
+
+/** A bed to aim at: number (25 = bull) and multiplier. */
+export type Bed = { n: number; mult: number };
+
+const BEDS: Bed[] = [
+  ...[1, 2, 3].flatMap((mult) => Array.from({ length: 20 }, (_, i) => ({ n: i + 1, mult }))),
+  { n: 25, mult: 1 },
+  { n: 25, mult: 2 },
+];
+const value = (b: Bed) => b.n * b.mult;
+/** Lower = nicer to finish on (halves cleanly when missed into the single). Bull last. */
+const doubleRank = (b: Bed) => (b.n === 25 ? 99 : (GOOD_DOUBLES as number[]).indexOf(b.n * 2) + (GOOD_DOUBLES.includes(b.n * 2) ? 0 : 20));
+/** Set-up darts: singles are easier than trebles, the bull is hardest. */
+const setupCost = (b: Bed) => (b.n === 25 ? 6 : b.mult === 1 ? 0 : b.mult === 3 ? 2 : 4);
+
+/**
+ * Easiest way to finish `left` (501, double out) with at most `darts` darts: fewest darts,
+ * then the friendliest double, then the easiest set-up. null if it can't be done.
+ */
+export function checkout(left: number, darts: number): Bed[] | null {
+  const finishes = BEDS.filter((b) => b.mult === 2);
+  for (let k = 1; k <= darts; k++) {
+    let best: Bed[] | null = null;
+    let bestCost = Infinity;
+    const walk = (rest: number, route: Bed[]) => {
+      if (route.length === k - 1) {
+        const d = finishes.find((f) => value(f) === rest);
+        if (!d) return;
+        const cost = doubleRank(d) * 100 + route.reduce((s, b) => s + setupCost(b), 0);
+        // Biggest set-up dart first, as players do (a miss into its single still leaves a shot).
+        if (cost < bestCost) (bestCost = cost), (best = [...[...route].sort((a, b) => value(b) - value(a)), d]);
+        return;
+      }
+      for (const b of BEDS) if (rest - value(b) >= 2) walk(rest - value(b), [...route, b]);
+    };
+    walk(left, []);
+    if (best) return best;
+  }
+  return null;
+}
+
+/** "1", "doble 2", "triple 20", "25", "diana". */
+export function bedName(b: Bed): string {
+  if (b.n === 25) return b.mult === 2 ? 'diana (bull)' : '25';
+  return b.mult === 1 ? `${b.n}` : `${b.mult === 2 ? 'doble' : 'triple'} ${b.n}`;
+}

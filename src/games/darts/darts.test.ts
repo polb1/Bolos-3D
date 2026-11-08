@@ -97,3 +97,21 @@ describe('bounce-outs', () => {
     expect(bounceOut(0, BULL_Y + 0.13, [{ x: 0.02, y: BULL_Y + 0.13 }])).toBeNull();
   });
 });
+
+import { checkout } from './physics';
+
+describe('checkout', () => {
+  const name = (r: ReturnType<typeof checkout>) => r?.map((b) => (b.mult === 1 ? `${b.n}` : `${'SDT'[b.mult - 1]}${b.n}`)).join(' ');
+  it('finishes with a double, fewest darts first', () => {
+    expect(name(checkout(40, 3))).toBe('D20');
+    expect(name(checkout(50, 1))).toBe('D25');
+    expect(name(checkout(5, 3))).toBe('1 D2');
+    expect(name(checkout(3, 3))).toBe('1 D1');
+    expect(name(checkout(170, 3))).toBe('T20 T20 D25');
+  });
+  it('knows the bogey numbers and the darts left', () => {
+    expect(checkout(169, 3)).toBeNull();
+    expect(checkout(3, 1)).toBeNull();
+    expect(checkout(1, 3)).toBeNull();
+  });
+});

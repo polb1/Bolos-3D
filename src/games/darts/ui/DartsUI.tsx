@@ -1,6 +1,6 @@
 import { click, useEsc } from '../../../ui/common';
 import { dartsRef } from '../instance';
-import { DARTS_PER_TURN, LEGS_TO_WIN, type DartsMode } from '../physics';
+import { aiTarget, bedName, checkout, DARTS_PER_TURN, LEGS_TO_WIN, type DartsMode } from '../physics';
 import { useDartsStore, type Opponent } from '../store';
 import { useNetStore } from '../../../net/client';
 import { worldRef } from '../../../world/instance';
@@ -110,6 +110,28 @@ function PosterClose() {
   );
 }
 
+/** Tells the player what to aim at once the score can be finished (or set up) this visit. */
+function Checkout({ left, darts }: { left: number; darts: number }) {
+  if (left > 170 || darts <= 0) return null;
+  const route = checkout(left, darts);
+  if (route)
+    return (
+      <div className="darts-checkout" role="status">
+        Para cerrar {left}: <b>{route.map(bedName).join(' → ')}</b>
+      </div>
+    );
+  if (!checkout(left, DARTS_PER_TURN)) return null; // 169, 168…: no finish yet, just score
+  const t = aiTarget(left);
+  const rest = left - t.n * t.mult;
+  const next = checkout(rest, DARTS_PER_TURN);
+  return (
+    <div className="darts-checkout" role="status">
+      Prepara el cierre: tira al <b>{bedName(t)}</b>
+      {next && <> y te quedará {rest} ({next.map(bedName).join(' → ')})</>}
+    </div>
+  );
+}
+
 function Hud() {
   const { mode, opponent, points, round, hits, banner, turnStart, poster, names, scores, legs, who } = useDartsStore();
   useEsc(poster ? closePoster : toMenu);
@@ -135,6 +157,7 @@ function Hud() {
           </>
         )}
       </div>
+      {mode === '501' && (!match || who === 0) && <Checkout left={points} darts={DARTS_PER_TURN - hits.length} />}
       <div className="darts-turn" aria-label="Dardos de esta tirada">
         {Array.from({ length: DARTS_PER_TURN }, (_, i) => (
           <span key={i} className={'dt' + (hits[i] ? ' done' : '')}>{hits[i]?.label ?? '·'}</span>
