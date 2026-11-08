@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { audio } from '../../../audio/AudioEngine';
-import { BALL, HEAD_PIN_Z, LANE, PIT_Z } from '../constants';
+import { BALL, HEAD_PIN_Z, LANE, PIT_Z, rackPositions } from '../constants';
+import { net } from '../../../net/client';
 import { BALL_COLORS, LB_TO_KG, QUALITY, type Settings } from '../../../config/settings';
-import { PhysicsWorld } from '../physics/PhysicsWorld';
+import { PhysicsWorld, type LaunchParams } from '../physics/PhysicsWorld';
 import { Alley } from '../scene/Alley';
 import { Monitor } from '../scene/Monitor';
 import { createBallMesh } from '../scene/pinMesh';
@@ -27,6 +28,19 @@ const ARM_GAIN = 1.2; // the mouse stroke is shorter than a real arm swing: boos
 const AIM_DAMP = 0.85; // sideways jitter of the mouse is larger than a bowler's: soften the angle
 const AI_THINK = 1.4; // s the computer bowler lines up before throwing
 const SPIN_RATE = 0.9; // wrist preset change per second while Q/E is held
+
+/**
+ * Online bowling messages (relayed by the room server, addressed with `to`). The bowler's
+ * side is the authority: it sends the throw so the rival watches it live, then the pins
+ * left standing, which the rival applies before scoring (two physics runs can differ).
+ */
+type BowlMsg =
+  | { k: 'bseek' }
+  | { k: 'bstart'; to: string; seed: number }
+  | { k: 'bthrow'; to: string; t: number[] }
+  | { k: 'bres'; to: string; standing: number[] }
+  | { k: 'bquit'; to: string };
+const RIVAL_WAIT = 25; // s without the rival's result before giving up on them
 
 type Mode = 'idle' | 'aim' | 'grab' | 'rolling' | 'settling' | 'result' | 'sweep';
 
@@ -72,6 +86,10 @@ export class Game {
   private camTarget = new THREE.Vector3(0, 0.3, -12);
   private camLook = new THREE.Vector3(0, 0.3, -12);
   private raf = 0;
+  /** Online: rival throws and results not yet played, and the seek announce timer. */
+  private rivalThrows: LaunchParams[] = [];
+  private rivalResults: number[][] = [];
+  private seekT = 0;
   private readonly unsub: () => void;
 
   constructor(private readonly host: HTMLElement) {
@@ -127,6 +145,7 @@ export class Game {
 
     window.addEventListener('resize', this.resize);
     this.resize();
+    net.onGame((from, data) => this.onNet(from, data as BowlMsg));
     this.loop();
   }
 
@@ -135,18 +154,93 @@ export class Game {
     this.input.setTouchSpin(v);
   }
 
-  startMatch() {
+  /** `seed` (online) makes both sides play on the same lane imperfections. */
+  startMatch(seed?: number) {
     const st = useGameStore.getState();
+    if (seed === undefined) st.setOnline(null);
     this.monitor.stop();
     st.newMatch();
     this.rolloff = null;
+    this.rivalThrows = [];
+    this.rivalResults = [];
     this.strikeStreak = st.players.map(() => 0);
-    this.physics.setVariation(this.rng); // every match is played on a slightly different lane
+    this.physics.setVariation(seed === undefined ? this.rng : createRng(seed)); // every match is played on a slightly different lane
     this.rack.reset();
     this.physics.removeBall();
     this.restX = 0;
     this.beginAim();
     st.setScreen('playing');
+  }
+
+  /** Online: look for someone else looking in the room (the lower id hosts and bowls first). */
+  seek() {
+    audio.unlock();
+    useGameStore.getState().setOnline(null);
+    useGameStore.getState().setScreen('seek');
+    this.seekT = 0;
+  }
+
+  private startOnline(rival: string, first: boolean, seed: number) {
+    const st = useGameStore.getState();
+    st.setLadder(null);
+    st.setOnline({ rival, name: net.peers.get(rival)?.name ?? 'Rival', first });
+    this.startMatch(seed);
+  }
+
+  private send(m: BowlMsg) {
+    net.sendGame(m);
+  }
+
+  private onNet(from: string, m: BowlMsg) {
+    if (!m || typeof m !== 'object') return;
+    const st = useGameStore.getState();
+    if (m.k === 'bseek' && st.screen === 'seek' && net.id && net.id < from) {
+      const seed = (Math.random() * 2 ** 32) >>> 0;
+      this.send({ k: 'bstart', to: from, seed });
+      this.startOnline(from, true, seed);
+      return;
+    }
+    if (m.k === 'bstart' && m.to === net.id && st.screen === 'seek' && Number.isInteger(m.seed)) {
+      this.startOnline(from, false, m.seed >>> 0);
+      return;
+    }
+    if (from !== st.online?.rival || !('to' in m) || m.to !== net.id) return;
+    const ok = (v: unknown, lo: number, hi: number) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
+    if (m.k === 'bthrow') {
+      const t = m.t;
+      if (Array.isArray(t) && t.length === 6 && ok(t[0], -1, 1) && ok(t[1], 0, 4) && ok(t[2], -0.3, 0.3) && ok(t[3], 0, 15) && ok(t[4], -1.5, 1.5) && ok(t[5], 3, 9))
+        this.rivalThrows.push({ x: t[0], z: t[1], angle: t[2], speed: t[3], spin: t[4], mass: t[5] });
+    } else if (m.k === 'bres') {
+      if (Array.isArray(m.standing) && m.standing.length <= 10 && m.standing.every((i) => Number.isInteger(i) && ok(i, 0, 9)))
+        this.rivalResults.push([...new Set(m.standing)]);
+    } else if (m.k === 'bquit') this.rivalLeft();
+  }
+
+  private rivalLeft() {
+    const st = useGameStore.getState();
+    if (!st.online) return;
+    st.setOnline(null);
+    if (st.screen === 'playing' || st.screen === 'paused') {
+      this.mode = 'idle';
+      this.monitor.stop();
+      this.physics.removeBall();
+      audio.stopRoll();
+      st.rivalGone();
+    }
+  }
+
+  private remoteTurn() {
+    const st = useGameStore.getState();
+    return !!st.players[st.current]?.remote;
+  }
+
+  /** Makes the deck match the pins the rival's side left standing (their physics run decides). */
+  private applyRivalResult(standing: number[]) {
+    const local = this.physics.standingPins();
+    const spots = rackPositions();
+    this.physics.removePins(local.filter((i) => !standing.includes(i)));
+    const up = standing.filter((i) => !local.includes(i) && this.standingBefore.includes(i));
+    if (up.length) this.physics.restorePins(up.map((index) => ({ index, x: spots[index][0], z: spots[index][1] })));
   }
 
   /** Skips the TV celebration clip. */
@@ -225,12 +319,23 @@ export class Game {
     const angle = clamp(r.angle * AIM_DAMP, -MAX_ANGLE, MAX_ANGLE) + gaussian(g, 0.003);
     const speed = clamp(r.speed * ARM_GAIN * (1 + gaussian(g, 0.025)), BALL.minSpeed * 0.6, BALL.maxSpeed * 1.1);
     const spin = clamp(st.aim.spin + r.curve * 1.6 + gaussian(g, 0.08), -1.2, 1.2);
+    if (st.online) {
+      // Rounded before rolling so both sides start from exactly the same numbers.
+      const q = (n: number) => Math.round(n * 1e5) / 1e5;
+      const t = [q(this.held.x), q(this.held.z), q(angle), q(speed), q(spin), q(st.settings.ballWeight * LB_TO_KG)];
+      this.send({ k: 'bthrow', to: st.online.rival, t });
+      this.held.x = t[0];
+      this.held.z = t[1];
+      this.launch(t[2], t[3], t[4], t[5]);
+      return;
+    }
     this.launch(angle, speed, spin);
   }
 
   private aiTurn() {
     const st = useGameStore.getState();
-    return st.players[st.current]?.ai !== undefined;
+    const p = st.players[st.current];
+    return p?.ai !== undefined || !!p?.remote;
   }
 
   /** The computer bowler throws: it only picks a line, the physics does the rest. */
@@ -241,12 +346,12 @@ export class Game {
     this.launch(t.angle, t.speed, t.spin);
   }
 
-  private launch(angle: number, speed: number, spin: number) {
+  private launch(angle: number, speed: number, spin: number, mass = useGameStore.getState().settings.ballWeight * LB_TO_KG) {
     const st = useGameStore.getState();
     st.setLastThrow({ kmh: speed * 3.6, angleDeg: (angle * 180) / Math.PI, spin });
     this.restX = this.held.x;
     this.physics.resetTilt();
-    this.physics.launchBall({ x: this.held.x, z: this.held.z, angle, speed, spin, mass: st.settings.ballWeight * LB_TO_KG });
+    this.physics.launchBall({ x: this.held.x, z: this.held.z, angle, speed, spin, mass });
     this.mode = 'rolling';
     this.modeTime = 0;
     this.slowTime = 0;
@@ -267,6 +372,9 @@ export class Game {
   }
 
   quitToMenu() {
+    const online = useGameStore.getState().online;
+    if (online) this.send({ k: 'bquit', to: online.rival });
+    useGameStore.getState().setOnline(null);
     this.mode = 'idle';
     this.monitor.stop();
     this.physics.removeBall();
@@ -428,7 +536,7 @@ export class Game {
   private rollOffStep(): number | 'done' | null {
     const st = useGameStore.getState();
     const [a, b] = st.players.map((p) => currentScore(p.rolls));
-    if (st.ladder === null || st.players.length !== 2 || a !== b) return null;
+    if ((st.ladder === null && !st.online) || st.players.length !== 2 || a !== b) return null;
     if (!this.rolloff || this.rolloff.length === 2) {
       if (this.rolloff && this.rolloff[0] !== this.rolloff[1]) {
         const winner = this.rolloff[0] > this.rolloff[1] ? 0 : 1;
@@ -461,11 +569,22 @@ export class Game {
     this.time += dt;
     this.modeTime += dt;
     const st = useGameStore.getState();
+    if (st.screen === 'seek' && (this.seekT -= dt) <= 0) {
+      this.seekT = 1;
+      this.send({ k: 'bseek' });
+    }
+    if (st.online && net.id && !net.peers.has(st.online.rival)) this.rivalLeft();
 
     if (this.mode === 'aim' || this.mode === 'grab') {
       this.input.poll();
       if (this.input.spinHeld) this.nudgeSpin(this.input.spinHeld * SPIN_RATE * dt);
-      if (this.mode === 'aim' && this.aiTurn() && this.modeTime > AI_THINK) this.aiRelease();
+      if (this.mode === 'aim' && this.remoteTurn()) {
+        const t = this.modeTime > 0.3 ? this.rivalThrows.shift() : undefined;
+        if (t) {
+          this.held.set(t.x, BALL.radius, t.z ?? LINE_Z);
+          this.launch(t.angle, t.speed, t.spin, t.mass);
+        }
+      } else if (this.mode === 'aim' && this.aiTurn() && this.modeTime > AI_THINK) this.aiRelease();
     }
 
     if (this.mode === 'rolling' || this.mode === 'settling') {
@@ -494,9 +613,19 @@ export class Game {
       if (this.mode === 'settling') {
         this.restTime = this.physics.pinsAtRest() ? this.restTime + dt : 0;
         if ((this.restTime > 0.5 && this.modeTime > 1.2) || this.modeTime > 5) {
-          this.mode = 'result';
-          this.modeTime = 0;
-          this.scoreRoll(false);
+          // Online, the bowler's side decides what fell: the rival's result is awaited and applied.
+          const online = st.online;
+          const remote = !!online && this.remoteTurn();
+          const res = remote ? this.rivalResults.shift() : undefined;
+          if (remote && !res) {
+            if (this.modeTime > RIVAL_WAIT) this.rivalLeft();
+          } else {
+            if (res) this.applyRivalResult(res);
+            else if (online) this.send({ k: 'bres', to: online.rival, standing: this.physics.standingPins() });
+            this.mode = 'result';
+            this.modeTime = 0;
+            this.scoreRoll(false);
+          }
         }
       }
     }

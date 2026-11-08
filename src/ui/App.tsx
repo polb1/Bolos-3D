@@ -9,6 +9,7 @@ import { LoadingScreen } from './LoadingScreen';
 import { MainMenu } from '../games/bowling/ui/MainMenu';
 import { PausePanel } from '../games/bowling/ui/PausePanel';
 import { SetupPanel } from '../games/bowling/ui/SetupPanel';
+import { SeekPanel } from '../games/bowling/ui/SeekPanel';
 import { Fade, WorldUI } from './world/WorldUI';
 import { worldRef } from '../world/instance';
 import { useWorldStore } from '../world/worldStore';
@@ -81,6 +82,7 @@ export function App() {
           {(screen === 'playing' || screen === 'paused') && <Hud />}
           {screen === 'menu' && <MainMenu />}
           {screen === 'setup' && <SetupPanel />}
+          {screen === 'seek' && <SeekPanel />}
           {screen === 'paused' && <PausePanel />}
           {screen === 'end' && <EndPanel />}
         </>

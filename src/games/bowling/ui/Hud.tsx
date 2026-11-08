@@ -22,6 +22,7 @@ function ThrowCoach() {
   const phase = useGameStore((s) => s.phase);
   const last = useGameStore((s) => s.lastThrow);
   const rival = useGameStore((s) => s.players[s.current]);
+  if (phase === 'aim' && rival?.remote) return <div id="throw-coach">Turno de <b>{rival.name}</b> · esperando su tiro…</div>;
   if (phase === 'aim' && rival?.ai !== undefined) return <div id="throw-coach">Turno de <b>{rival.name}</b> · preparando el tiro…</div>;
   if (phase === 'aim' || phase === 'grab') {
     return (
@@ -48,7 +49,7 @@ function ThrowCoach() {
 function SpinPanel() {
   const aim = useGameStore((s) => s.aim);
   const phase = useGameStore((s) => s.phase);
-  const aiTurn = useGameStore((s) => s.players[s.current]?.ai !== undefined);
+  const aiTurn = useGameStore((s) => s.players[s.current]?.ai !== undefined || !!s.players[s.current]?.remote);
   if ((phase !== 'aim' && phase !== 'grab') || aiTurn) return null;
   const spin = Math.round(aim.spin * 100);
   return (

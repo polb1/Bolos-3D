@@ -5,6 +5,8 @@ export interface PlayerGame {
   rolls: Roll[];
   /** Index into LADDER when this bowler is the computer. */
   ai?: number;
+  /** Online rival: their throws arrive over the network. */
+  remote?: true;
 }
 
 /** Players alternate frame by frame; returns who throws next (-1 when the match is over). */

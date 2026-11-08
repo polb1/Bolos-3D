@@ -18,6 +18,7 @@ Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo 
 ## Bolera (`games/bowling/`)
 - `constants.ts`: medidas reglamentarias y parámetros físicos.
 - `physics/PhysicsWorld.ts`: pista con zona aceitada (μ 0,02, primeros 12,2 m) y seca (μ 0,26), de ahí sale el gancho; bolos con el casco convexo del perfil real; imperfecciones con semilla; bolos derribados y bolos que se tambalean.
+- Online 1 contra 1 (`Game.seek`): mismo emparejamiento que los dardos (`bseek`/`bstart` con semilla de pista común). Quien tira envía el tiro (`bthrow`, el rival lo ve en directo) y luego los bolos que quedan en pie (`bres`); el rival aplica ese resultado antes de puntuar porque dos simulaciones Rapier pueden diferir. Empate → bola de desempate.
 - `scoring/`: reglas oficiales como funciones puras. `game/`: `Game` (bucle, fases, cámara, lanzamiento), `PinRack` (recolocadora), `match`, `ai`, `Input`. `scene/`: `Alley`, `Monitor` (tele con clip tras strike/spare), `pinMesh`, `textures`. `store/useGameStore.ts`. `ui/`.
 
 ## Dardos (`games/darts/`)

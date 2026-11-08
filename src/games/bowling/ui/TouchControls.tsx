@@ -24,7 +24,7 @@ function SpinButton({ dir, label, aria }: { dir: number; label: string; aria: st
 }
 
 export function TouchControls() {
-  const aiTurn = useGameStore((s) => s.players[s.current]?.ai !== undefined);
+  const aiTurn = useGameStore((s) => s.players[s.current]?.ai !== undefined || !!s.players[s.current]?.remote);
   if (aiTurn) return null;
   return (
     <div id="touch-controls">

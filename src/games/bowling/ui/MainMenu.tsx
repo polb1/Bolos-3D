@@ -52,6 +52,9 @@ export function MainMenu() {
           <button className="btn menu" onClick={tournament}>
             🏆 Torneo vs IA · stepladder
           </button>
+          <button className="btn menu" onClick={() => (audio.ui(), gameRef.current?.seek())}>
+            🌐 Online · 1 contra 1
+          </button>
           <button className="btn menu" onClick={() => play(2)}>
             Duelo local · 2 jugadores
           </button>

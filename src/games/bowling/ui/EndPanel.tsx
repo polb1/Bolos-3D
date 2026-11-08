@@ -11,6 +11,9 @@ export function EndPanel() {
   const coins = useGameStore((s) => s.coins);
   const ladder = useGameStore((s) => s.ladder);
   const ladderResult = useGameStore((s) => s.ladderResult);
+  const rolloffWinner = useGameStore((s) => s.rolloffWinner);
+  const rivalLeft = useGameStore((s) => s.rivalLeft);
+  const online = players.some((p) => p.remote);
   const next = (round: number) => (useGameStore.getState().setLadder(round), gameRef.current?.startMatch());
   const scores = players.map((p) => currentScore(p.rolls));
   const best = Math.max(...scores);
@@ -21,6 +24,8 @@ export function EndPanel() {
   else if (players.length > 1) title = scores.every((s) => s === best) ? '¡Empate!' : `¡Gana ${players[winner].name}!`;
   else if (best >= 200) title = '¡Partidón!';
 
+  if (players.length > 1 && rolloffWinner !== null) title = `¡Gana ${players[rolloffWinner].name} en el desempate!`;
+  if (rivalLeft) title = `${players.find((p) => p.remote)?.name ?? 'Tu rival'} ha dejado la partida`;
   if (ladderResult === 'champion') title = '🏆 ¡CAMPEÓN DEL TORNEO!';
   else if (ladderResult === 'win') title = `¡Eliminas a ${players[1].name}!`;
   else if (ladderResult === 'lose') title = `Eliminado por ${players[1].name}`;
@@ -32,7 +37,7 @@ export function EndPanel() {
       <div className="panel end-panel">
         <h2>{title}</h2>
         {newRecord && <div className="end-record">★ NUEVO RÉCORD ★</div>}
-        {ladder !== null && scores[0] === scores[1] && <p className="stats-line">Empate a {scores[0]} · decidido en la bola de desempate</p>}
+        {(ladder !== null || online) && !rivalLeft && scores[0] === scores[1] && <p className="stats-line">Empate a {scores[0]} · decidido en la bola de desempate</p>}
         <div className="end-score">{best}</div>
         <p className="stats-line">
           {earned ? `+${earned} 🪙 ganadas` : 'Supera 100 puntos para ganar monedas'} · tienes {coins} 🪙
@@ -63,6 +68,10 @@ export function EndPanel() {
         ) : ladder !== null ? (
           <button className="btn primary" onClick={() => next(0)} autoFocus>
             Nuevo torneo
+          </button>
+        ) : online ? (
+          <button className="btn primary" onClick={() => gameRef.current?.seek()} autoFocus>
+            Buscar otra partida online
           </button>
         ) : (
           <button className="btn primary" onClick={() => gameRef.current?.startMatch()} autoFocus>

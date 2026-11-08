@@ -4,8 +4,17 @@ import { LADDER } from '../game/ai';
 import type { PlayerGame } from '../game/match';
 import { currentScore, gameStats, type Roll } from '../scoring/scoring';
 import { storage } from '../../../utils/storage';
+import { cleanName } from '../../../net/protocol';
+import { useWorldStore } from '../../../world/worldStore';
 
-export type Screen = 'loading' | 'menu' | 'setup' | 'playing' | 'paused' | 'end';
+export type Screen = 'loading' | 'menu' | 'setup' | 'seek' | 'playing' | 'paused' | 'end';
+
+/** Online 1 v 1: who the rival is and whether this side bowls first. */
+export interface OnlineMatch {
+  rival: string;
+  name: string;
+  first: boolean;
+}
 export type Phase = 'aim' | 'grab' | 'rolling' | 'settling' | 'sweep';
 
 export interface Aim {
@@ -60,6 +69,12 @@ interface State {
   /** Stepladder round against the AI (0 = vs #3 seed … 2 = final), null outside the tournament. */
   ladder: number | null;
   ladderResult: 'win' | 'lose' | 'champion' | null;
+  /** Online rival, null otherwise. */
+  online: OnlineMatch | null;
+  /** Who won a roll-off after a tied game (null: no roll-off). */
+  rolloffWinner: number | null;
+  /** Set when the online rival leaves mid-game. */
+  rivalLeft: boolean;
 
   setScreen(s: Screen): void;
   setLoadError(e: string): void;
@@ -80,6 +95,8 @@ interface State {
   /** Spends coins on a shop item; false if already owned or unaffordable. */
   buy(id: string, price: number): boolean;
   setLadder(round: number | null): void;
+  setOnline(o: OnlineMatch | null): void;
+  rivalGone(): void;
 }
 
 let bannerId = 0;
@@ -106,6 +123,9 @@ export const useGameStore = create<State>((set, get) => ({
   earned: 0,
   ladder: null,
   ladderResult: null,
+  online: null,
+  rolloffWinner: null,
+  rivalLeft: false,
 
   setScreen: (screen) => set({ screen }),
   setLoadError: (loadError) => set({ loadError }),
@@ -120,15 +140,20 @@ export const useGameStore = create<State>((set, get) => ({
     set({ muted });
   },
   newMatch: () => {
-    const { settings, ladder } = get();
-    const players: PlayerGame[] =
-      ladder === null
+    const { settings, ladder, online } = get();
+    // Online, the rival sees the name used in the hall: show the same one here.
+    const me = online ? cleanName(useWorldStore.getState().name) : settings.names[0].trim() || 'Jugador 1';
+    const players: PlayerGame[] = online
+      ? online.first
+        ? [{ name: me, rolls: [] }, { name: online.name, rolls: [], remote: true }]
+        : [{ name: online.name, rolls: [], remote: true }, { name: me, rolls: [] }]
+      : ladder === null
         ? settings.names.slice(0, settings.players).map((name, i) => ({ name: name.trim() || `Jugador ${i + 1}`, rolls: [] }))
         : [
             { name: settings.names[0].trim() || 'Jugador 1', rolls: [] },
             { name: LADDER[ladder].name, rolls: [], ai: ladder },
           ];
-    set({ ladderResult: null,  players, current: 0, phase: 'aim', lastThrow: null, banner: null, cine: false, tv: false, newRecord: false, aim: { spin: 0 } });
+    set({ ladderResult: null, rolloffWinner: null, rivalLeft: false, players, current: 0, phase: 'aim', lastThrow: null, banner: null, cine: false, tv: false, newRecord: false, aim: { spin: 0 } });
   },
   addRoll: (player, roll) =>
     set({ players: get().players.map((p, i) => (i === player ? { ...p, rolls: [...p.rolls, roll] } : p)) }),
@@ -142,7 +167,7 @@ export const useGameStore = create<State>((set, get) => ({
   setTv: (tv) => set({ tv }),
   finishMatch: (tiebreak) => {
     const { players, stats } = get();
-    const humanPlayers = players.filter((p) => p.ai === undefined);
+    const humanPlayers = players.filter((p) => p.ai === undefined && !p.remote);
     const best = Math.max(...humanPlayers.map((p) => currentScore(p.rolls)));
     // The AI's strikes and spares are not the player's: personal stats count humans only.
     const totals = humanPlayers.reduce(
@@ -173,9 +198,11 @@ export const useGameStore = create<State>((set, get) => ({
     storage.set('stats', next);
     const coins = get().coins + earned;
     storage.set('coins', coins);
-    set({ stats: next, newRecord: best > stats.best && best > 0, screen: 'end', cine: false, coins, earned, ladderResult });
+    set({ stats: next, newRecord: best > stats.best && best > 0, screen: 'end', cine: false, coins, earned, ladderResult, rolloffWinner: tiebreak ?? null });
   },
   setLadder: (ladder) => set({ ladder }),
+  setOnline: (online) => set({ online }),
+  rivalGone: () => set({ rivalLeft: true, screen: 'end', cine: false, banner: null, tv: false }),
   buy: (id, price) => {
     const { coins, owned } = get();
     if (owned.includes(id) || coins < price) return false;
