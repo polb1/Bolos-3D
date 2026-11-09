@@ -217,3 +217,17 @@ describe('air hockey rules', () => {
     expect(serveTo(1, 'training')).toBe(1);
   });
 });
+
+import { projectPuck } from './physics';
+
+describe('projectPuck (online lag compensation)', () => {
+  it('moves straight with drag and bounces off the side rail', () => {
+    const a = projectPuck({ x: 0, z: 0, vx: 0, vz: 2, live: true }, 0.1);
+    expect(a.z).toBeGreaterThan(0.19);
+    expect(a.z).toBeLessThan(0.2);
+    const lim = 0.5 - 0.041;
+    const b = projectPuck({ x: lim - 0.05, z: 0, vx: 1, vz: 0, live: true }, 0.1);
+    expect(b.x).toBeLessThan(lim);
+    expect(b.vx).toBeLessThan(0);
+  });
+});

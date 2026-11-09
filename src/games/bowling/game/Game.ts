@@ -631,6 +631,11 @@ export class Game {
     }
 
     if (this.mode === 'result') {
+      // Online the rival may skip the TV clip and bowl again: catch up instead of lagging behind.
+      if (this.rivalThrows.length) {
+        this.skipClip();
+        this.resultWait = Math.min(this.resultWait, 0.4);
+      }
       if (!this.monitor.playing) {
         if (st.tv) st.setTv(false);
         this.resultWait -= dt;

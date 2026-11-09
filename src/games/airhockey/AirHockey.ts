@@ -8,19 +8,23 @@ import { applyGoal, MATCH_TIME, newScore, serveTo, timeUp, type Mode } from './r
 import { PUCK_SPEEDS, useHockeyStore } from './store';
 import { buildArena } from './arena';
 import { buildTable, COLORS, SURFACE_Y, type TableParts } from './table';
+import { projectPuck } from './physics';
 import { net } from '../../net/client';
 
 const SEND_EVERY = 1 / 30; // s between online state messages
 const RIVAL_TIMEOUT = 5; // s without messages before the rival counts as gone
-/** How far ahead to project the host's puck (roughly one-way latency). */
-const LEAD = 0.05;
+const PING_EVERY = 1; // s between latency probes
+const MAX_LEAD = 0.25; // s: never extrapolate further than this
+const SMOOTH = 12; // 1/s: how fast a corrected puck/mallet glides to its true place on screen
 
 /** Online messages. `hs` host state, `gm` guest mallet, `hit` guest hit, `quit` leaving. */
 type HockeyMsg =
   | { k: 'hs'; to: string; p: [number, number, number, number, number]; m: [number, number]; t: number; sc: [number, number, number, number]; h: number }
   | { k: 'gm'; to: string; m: [number, number] }
   | { k: 'hit'; to: string; p: [number, number, number, number]; h: number }
-  | { k: 'quit'; to: string };
+  | { k: 'quit'; to: string }
+  | { k: 'ping'; to: string; t: number }
+  | { k: 'pong'; to: string; t: number };
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
@@ -60,6 +64,13 @@ export class AirHockey {
   private timeAcc = 0;
   // Online state.
   private remote = { x: 0, z: 0 };
+  /** Rival mallet velocity from its last two updates (to lead it by the lag). */
+  private remoteV = { x: 0, z: 0, at: 0 };
+  /** Smoothed round-trip time to the rival (s) and the probe timer. */
+  private rtt = 0.15;
+  private pingT = 0;
+  /** Drawn puck = physics puck + this offset, which decays: corrections glide instead of jumping. */
+  private puckOff = { x: 0, z: 0 };
   private sendT = 0;
   private lastHeard = 0;
   /** Guest: hits sent so far; host: last guest hit applied (echoed back so stale states are ignored). */
@@ -134,6 +145,10 @@ export class AirHockey {
     for (const m of this.physics.mallets) (m.maxSpeed = HUMAN_SPEED), (m.maxAccel = HUMAN_ACCEL);
     this.physics.puck.live = false;
     this.remote = { x: 0, z: role === 'host' ? -0.7 : 0.7 };
+    this.remoteV = { x: 0, z: 0, at: performance.now() };
+    this.puckOff = { x: 0, z: 0 };
+    this.rtt = 0.15;
+    this.pingT = 0;
     this.hitSeq = 0;
     this.lastHeard = performance.now();
     st.setScreen('playing');
@@ -159,32 +174,45 @@ export class AirHockey {
     const ph = this.physics;
     const p = ph.puck;
     if (m.k === 'quit') return this.rivalGone();
+    if (m.k === 'ping') return void net.sendGame({ k: 'pong', to: o.rival, t: num(m.t) } satisfies HockeyMsg);
+    if (m.k === 'pong') {
+      const sample = (performance.now() - num(m.t)) / 1000;
+      if (sample > 0 && sample < 3) this.rtt += (sample - this.rtt) * 0.25;
+      return;
+    }
     if (o.role === 'host') {
-      if (m.k === 'gm') this.remote = { x: num(m.m?.[0]), z: num(m.m?.[1]) };
-      else if (m.k === 'hit' && p.z < 0.15) {
-        // The guest's own hit is authoritative: take its puck state.
-        Object.assign(p, { x: num(m.p?.[0]), z: num(m.p?.[1]), vx: num(m.p?.[2]), vz: num(m.p?.[3]), live: true });
+      if (m.k === 'gm') this.setRemote(num(m.m?.[0]), num(m.m?.[1]));
+      else if (m.k === 'hit') {
+        // Always acknowledge it: the guest ignores our states until we echo its latest hit,
+        // so a rejected hit must not freeze its puck.
         this.hitSeq = Math.max(this.hitSeq, num(m.h));
+        // The guest's own hit is authoritative unless the puck has clearly left its half (or a goal went in).
+        if (!p.live || p.z > 0.4) return;
+        // It happened half a round trip ago: move it forward, and glide the drawn puck over.
+        const h = projectPuck({ x: num(m.p?.[0]), z: num(m.p?.[1]), vx: num(m.p?.[2]), vz: num(m.p?.[3]), live: true }, this.lead);
+        if (Math.hypot(p.x - h.x, p.z - h.z) < 0.6) (this.puckOff.x += p.x - h.x), (this.puckOff.z += p.z - h.z);
+        Object.assign(p, h);
       }
       return;
     }
     if (m.k !== 'hs') return;
-    this.remote = { x: num(m.m?.[0]), z: num(m.m?.[1]) };
+    this.setRemote(num(m.m?.[0]), num(m.m?.[1]));
     const [x, z, vx, vz, live] = (m.p ?? []).map(num);
     // Ignore states sent before the host saw our latest hit.
     if (num(m.h) >= this.hitSeq) {
       const me = ph.mallets[1];
-      const hx = x + vx * LEAD;
-      const hz = z + vz * LEAD;
-      const err = Math.hypot(hx - p.x, hz - p.z);
+      // The state is half a round trip old: move it forward by that much, rail bounces included.
+      const h = projectPuck({ x, z, vx, vz, live: true }, this.lead);
+      const err = Math.hypot(h.x - p.x, h.z - p.z);
       const mine = p.z < 0 && Math.hypot(p.x - me.x, p.z - me.z) < 0.22; // our mallet is on it: trust local
-      if (!live) Object.assign(p, { x, z, vx: 0, vz: 0, live: false });
-      else if (!p.live || err > 0.25) Object.assign(p, { x: hx, z: hz, vx, vz, live: true });
-      else if (!mine) {
-        p.x += (hx - p.x) * 0.3;
-        p.z += (hz - p.z) * 0.3;
-        p.vx = vx;
-        p.vz = vz;
+      if (!live) {
+        Object.assign(p, { x, z, vx: 0, vz: 0, live: false });
+        this.puckOff = { x: 0, z: 0 };
+      } else if (!mine && err > 0.004) {
+        // Snap the simulation, but keep the drawn puck where it was and let it glide over.
+        if (p.live && err < 0.6) (this.puckOff.x += p.x - h.x), (this.puckOff.z += p.z - h.z);
+        else this.puckOff = { x: 0, z: 0 };
+        Object.assign(p, { x: h.x, z: h.z, vx: h.vx, vz: h.vz, live: true });
       }
     }
     const [p1, p2, golden, winner] = (m.sc ?? []).map(num);
@@ -198,6 +226,21 @@ export class AirHockey {
       if (score.winner && !this.endIn) this.endIn = 1.4;
     }
     st.set({ time: num(m.t) });
+  }
+
+  /** One-way delay to compensate (s). */
+  private get lead() {
+    return Math.min(MAX_LEAD, this.rtt / 2 + SEND_EVERY / 2);
+  }
+
+  private setRemote(x: number, z: number) {
+    const now = performance.now();
+    const dt = (now - this.remoteV.at) / 1000;
+    if (dt > 0.005) {
+      const k = Math.min(1, dt / 0.08);
+      this.remoteV = { x: this.remoteV.x + ((x - this.remote.x) / dt - this.remoteV.x) * k, z: this.remoteV.z + ((z - this.remote.z) / dt - this.remoteV.z) * k, at: now };
+    }
+    this.remote = { x, z };
   }
 
   private rivalGone() {
@@ -215,8 +258,15 @@ export class AirHockey {
     const ph = this.physics;
     const host = o.role === 'host';
     const other = ph.mallets[host ? 1 : 0];
-    other.tx = this.remote.x;
-    other.tz = this.remote.z;
+    // The rival's hand is a little ahead of what we last heard: lead it (capped, it can't be guessed far).
+    const ahead = Math.min(this.lead, 0.12) + (performance.now() - this.remoteV.at) / 1000;
+    const lead = Math.min(ahead, 0.2);
+    other.tx = this.remote.x + this.remoteV.x * lead;
+    other.tz = this.remote.z + this.remoteV.z * lead;
+    if ((this.pingT -= dt) <= 0) {
+      this.pingT = PING_EVERY;
+      net.sendGame({ k: 'ping', to: o.rival, t: performance.now() } satisfies HockeyMsg);
+    }
     if (!net.peers.has(o.rival) || performance.now() - this.lastHeard > RIVAL_TIMEOUT * 1000) return this.rivalGone();
     if ((this.sendT -= dt) > 0) return;
     this.sendT = SEND_EVERY;
@@ -530,7 +580,10 @@ export class AirHockey {
     const ph = this.physics;
     puck.visible = ph.puck.live;
     const f = this.mySide;
-    puck.position.set(ph.puck.x * f, SURFACE_Y + 0.004, ph.puck.z * f);
+    const decay = Math.exp(-SMOOTH * dt);
+    this.puckOff.x *= decay;
+    this.puckOff.z *= decay;
+    puck.position.set((ph.puck.x + this.puckOff.x) * f, SURFACE_Y + 0.004, (ph.puck.z + this.puckOff.z) * f);
     ph.mallets.forEach((m, i) => mallets[i].position.set(m.x * f, SURFACE_Y, m.z * f));
 
     for (const r of this.rings) {

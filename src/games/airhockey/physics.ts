@@ -240,3 +240,29 @@ export class HockeyPhysics {
       }
   }
 }
+
+/**
+ * Where a free puck will be after `t` seconds (online lag compensation): straight line with
+ * the air drag, mirrored off the side rails and the end rails outside the goal mouth.
+ * Ignores mallets: it only has to bridge the network delay.
+ */
+export function projectPuck(p: Puck, t: number, drag = DEFAULT_TUNING.airDrag, wallE = DEFAULT_TUNING.wallE): Puck {
+  const k = Math.exp(-drag * t);
+  const s = drag > 0 ? (1 - k) / drag : t; // distance factor under exponential drag
+  const fold = (pos: number, v: number, lim: number) => {
+    // Reflect inside [-lim, lim]; each bounce loses speed like the real rail.
+    let x = pos + v * s;
+    let vel = v * k;
+    let n = 0;
+    while ((x > lim || x < -lim) && n++ < 4) {
+      x = x > lim ? 2 * lim - x : -2 * lim - x;
+      vel = -vel * wallE;
+    }
+    return [clamp(x, -lim, lim), vel];
+  };
+  const [x, vx] = fold(p.x, p.vx, TABLE.width / 2 - TABLE.puckR);
+  const zLim = TABLE.length / 2 - TABLE.puckR;
+  const goalMouth = Math.abs(p.x + p.vx * s * 0.5) < TABLE.goal / 2;
+  const [z, vz] = goalMouth ? [p.z + p.vz * s, p.vz * k] : fold(p.z, p.vz, zLim);
+  return { x, z, vx, vz, live: p.live };
+}
