@@ -10,6 +10,8 @@ import { buildArena } from './arena';
 import { buildTable, COLORS, SURFACE_Y, type TableParts } from './table';
 import { projectPuck } from './physics';
 import { net } from '../../net/client';
+import { QUALITY } from '../../config/settings';
+import { useGameStore } from '../bowling/store/useGameStore';
 
 const SEND_EVERY = 1 / 30; // s between online state messages
 const RIVAL_TIMEOUT = 5; // s without messages before the rival counts as gone
@@ -78,12 +80,12 @@ export class AirHockey {
   private lastHitSent = 0;
 
   constructor(private host: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ antialias: QUALITY[useGameStore.getState().settings.quality].antialias, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = QUALITY[useGameStore.getState().settings.quality].shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY[useGameStore.getState().settings.quality].pixelRatio));
     host.appendChild(this.renderer.domElement);
 
     this.scene.background = new THREE.Color(0x1a120c);

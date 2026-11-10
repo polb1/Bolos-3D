@@ -17,6 +17,8 @@ interface Client {
   room: string;
   /** Messages in the current one-second window (simple flood guard). */
   burst: number;
+  /** Answered the last keepalive ping. */
+  alive: boolean;
 }
 
 const MAX_PER_SECOND = 90; // online air hockey sends ~30 state updates/s on top of hall moves
@@ -64,6 +66,8 @@ export function startServer(port = 8787) {
   const broadcast = (c: Client, m: ServerMsg) => others(c).forEach((o) => send(o, m));
 
   const timer = setInterval(() => rooms.forEach((set) => set.forEach((c) => (c.burst = 0))), 1000);
+  // Keepalive: proxies drop idle sockets, and a phone that lost signal must free its seat.
+  const ping = setInterval(() => rooms.forEach((set) => set.forEach((c) => (c.alive ? ((c.alive = false), c.ws.ping()) : c.ws.terminate()))), 20000);
 
   wss.on('connection', (ws, req) => {
     const room = cleanRoom(new URL(req.url ?? '/', 'http://x').searchParams.get('sala'));
@@ -74,8 +78,9 @@ export function startServer(port = 8787) {
       return;
     }
     rooms.set(room, set);
-    const c: Client = { ws, peer: null, room, burst: 0 };
+    const c: Client = { ws, peer: null, room, burst: 0, alive: true };
     set.add(c);
+    ws.on('pong', () => (c.alive = true));
 
     ws.on('message', (buf) => {
       if (++c.burst > MAX_PER_SECOND) return;
@@ -108,6 +113,7 @@ export function startServer(port = 8787) {
     close: () =>
       new Promise<void>((done) => {
         clearInterval(timer);
+        clearInterval(ping);
         wss.clients.forEach((ws) => ws.terminate());
         wss.close(() => server.close(() => done()));
       }),

@@ -5,6 +5,8 @@ import { SwingTracker } from '../../utils/SwingTracker';
 import { clamp } from '../../utils/math';
 import { createRng, gaussian } from '../../utils/random';
 import { net } from '../../net/client';
+import { QUALITY } from '../../config/settings';
+import { useGameStore } from '../bowling/store/useGameStore';
 import { buildLounge } from '../../world3d/lounge';
 import { dartboard } from '../../world3d/textures';
 import { useWorldStore } from '../../world/worldStore';
@@ -41,7 +43,7 @@ const AI_HAND: Vec3 = { x: 0.04, y: 1.62, z: OCHE + 0.2 };
 const RIVAL_COLOR = 0xff5a5a;
 
 /** Online darts messages (relayed by the room server, addressed with `to`). */
-type DartsMsg = { k: 'dseek' } | { k: 'dstart'; to: string } | { k: 'dthrow'; to: string; f: number[]; v: number[] } | { k: 'dquit'; to: string };
+type DartsMsg = { k: 'dseek' } | { k: 'dstart'; to: string } | { k: 'dthrow'; to: string; f: number[]; v: number[]; a?: number[] } | { k: 'dquit'; to: string };
 
 /** A steel-tip dart pointing along -z: tip, tungsten barrel, shaft, flights. */
 function makeDart(color: number) {
@@ -101,7 +103,7 @@ export class Darts {
   private aiT = 0;
   /** Online: rival id, throws waiting to be shown, and seek announce timer. */
   private rival: string | null = null;
-  private queue: { f: Vec3; v: Vec3 }[] = [];
+  private queue: { f: Vec3; v: Vec3; a?: { x: number; y: number } }[] = [];
   private seekT = 0;
   private firstStarter: 0 | 1 = 0;
   private poster!: THREE.Mesh;
@@ -110,11 +112,11 @@ export class Darts {
   private readonly gameCam = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
 
   constructor(private host: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ antialias: QUALITY[useGameStore.getState().settings.quality].antialias, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = QUALITY[useGameStore.getState().settings.quality].shadows;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY[useGameStore.getState().settings.quality].pixelRatio));
     host.appendChild(this.renderer.domElement);
 
     this.scene.background = new THREE.Color(0x1a120c);
@@ -222,7 +224,9 @@ export class Darts {
       };
       const f = vec(m.f, -5, 5);
       const v = vec(m.v, -20, 20);
-      if (f && v && f.z > 1) this.queue.push({ f, v });
+      // The thrower's landing point decides: Math.* can differ by a hair between browsers.
+      const a = Array.isArray(m.a) && m.a.length === 2 && m.a.every((n) => typeof n === 'number' && Math.abs(n) < 5) ? { x: m.a[0] as number, y: m.a[1] as number } : undefined;
+      if (f && v && f.z > 1) this.queue.push({ f, v, a });
     } else if (m.k === 'dquit' && m.to === net.id && from === this.rival) this.rivalGone();
   }
 
@@ -251,7 +255,8 @@ export class Darts {
       // Rounded before flying so both sides simulate exactly the same numbers.
       const r = (n: number) => Math.round(n * 1e5) / 1e5;
       for (const o of [from, v]) (['x', 'y', 'z'] as const).forEach((k) => (o[k] = r(o[k])));
-      net.sendGame({ k: 'dthrow', to: this.rival, f: [from.x, from.y, from.z], v: [v.x, v.y, v.z] } satisfies DartsMsg);
+      const at = fly(from, v);
+      net.sendGame({ k: 'dthrow', to: this.rival, f: [from.x, from.y, from.z], v: [v.x, v.y, v.z], a: at.end === 'floor' ? undefined : [at.at.x, at.at.y] } satisfies DartsMsg);
     }
     this.launchDart(from, v, 0xd8f24a);
     this.hand.visible = false;
@@ -267,8 +272,12 @@ export class Darts {
     this.launchDart(AI_HAND, launch(AI_HAND, aim, IDEAL, IDEAL, 0), RIVAL_COLOR);
   }
 
-  private launchDart(from: Vec3, v: Vec3, color: number) {
+  private launchDart(from: Vec3, v: Vec3, color: number, at?: { x: number; y: number }) {
     const flight = fly(from, v);
+    if (at && flight.end !== 'floor') {
+      Object.assign(flight.at, at);
+      flight.end = Math.hypot(at.x, at.y - BULL_Y) <= BOARD_R ? 'board' : 'wall';
+    }
     const bounced = flight.end === 'board' ? bounceOut(flight.at.x, flight.at.y, this.points) : null;
     const hit = flight.end !== 'board' ? { score: 0, mult: 0, label: 'FUERA' } : bounced ? { score: 0, mult: 0, label: 'REBOTE' } : scoreAt(flight.at.x, flight.at.y);
     const mesh = makeDart(color);
@@ -495,7 +504,7 @@ export class Darts {
     if (st.screen === 'playing' && st.who === 1 && !this.flying && !this.turnOver) {
       if (st.opponent === 'ai' && (this.aiT -= dt) <= 0) this.aiThrow();
       const q = st.opponent === 'online' ? this.queue.shift() : undefined;
-      if (q) this.launchDart(q.f, q.v, RIVAL_COLOR);
+      if (q) this.launchDart(q.f, q.v, RIVAL_COLOR, q.a);
     }
     if (this.rival && st.screen === 'playing' && net.id && !net.peers.has(this.rival)) this.rivalGone();
     if (this.turnOver > 0 && this.turnOver < 90 && (this.turnOver -= dt) <= 0) {
