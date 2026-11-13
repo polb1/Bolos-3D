@@ -1,10 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import { BricksGame } from './bricks';
 import { MAP, MazeGame, MH, MW, open } from './maze';
+import { PlanesGame } from './planes';
+import { PlanetGame } from './planet';
 import { SnakeGame } from './snake';
+
+describe('arcade shooters', () => {
+  it('planes: auto-fire downs a fighter, a crash costs a life', () => {
+    const g = new PlanesGame(() => 0.5);
+    g.foes.push({ x: 0.5, y: 0.6, vx: 0, vy: 0, hp: 1, kind: 'fighter', t: 0 });
+    for (let i = 0; i < 60 && !g.score; i++) g.step(1 / 60, inp());
+    expect(g.score).toBe(50);
+    g.safe = 0;
+    g.foes = [{ x: g.me.x, y: g.me.y, vx: 0, vy: 0, hp: 1, kind: 'fighter', t: 0 }];
+    g.step(0.001, inp());
+    expect(g.lives).toBe(2);
+  });
+
+  it('planet: a big rock splits when shot, a rock on the planet costs a life', () => {
+    const g = new PlanetGame(() => 0.5);
+    g.addRock(0.5, 0.2, 3, 0);
+    for (let i = 0; i < 40 && g.rocks.length < 2; i++) g.step(1 / 60, inp());
+    expect(g.rocks.filter((r) => r.size === 2).length).toBe(2);
+    g.rocks = [];
+    g.addRock(0.5, 0.52, 1, 0);
+    g.step(0.001, inp());
+    expect(g.lives).toBe(2);
+  });
+});
 import type { ArcadeInput, Dir } from './types';
 
-const inp = (p: Partial<ArcadeInput> = {}): ArcadeInput => ({ dir: null, steer: 0, pointer: null, fire: false, ...p });
+const inp = (p: Partial<ArcadeInput> = {}): ArcadeInput => ({ dir: null, steer: 0, lift: 0, pointer: null, pointerY: null, fire: false, ...p });
 
 describe('arcade', () => {
   it('maze rows are even and every crumb is reachable from the mouse', () => {

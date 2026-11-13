@@ -70,6 +70,7 @@ export class MazeGame implements ArcadeGame {
   lives = 3;
   over = false;
   status = '';
+  aspect = MW / MH;
   level = 1;
   mouse: Mover = { ...START, dir: null, p: 0 };
   want: Dir | null = null;

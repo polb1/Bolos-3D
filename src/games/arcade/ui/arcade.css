@@ -1,0 +1,120 @@
+/* Recreativas: a dim games room with wooden cabinets, lit marquees and CRT screens. */
+.arcade-room {
+  position: fixed; inset: 0; overflow-y: auto; color: #f3e6d0;
+  background:
+    radial-gradient(ellipse at 50% 0%, #6b3f2299 0%, transparent 60%),
+    repeating-linear-gradient(90deg, #2a1a10 0 46px, #23160d 46px 92px),
+    #1e140c;
+  display: flex; flex-direction: column; align-items: center;
+}
+.arcade-room::after { /* carpet under the machines */
+  content: ''; position: fixed; left: 0; right: 0; bottom: 0; height: 22vh; pointer-events: none; z-index: 0;
+  background: repeating-linear-gradient(45deg, #4a1e1a 0 10px, #3d1815 10px 20px); opacity: 0.6;
+  box-shadow: 0 -12px 30px #0008 inset;
+}
+.arcade-room > * { position: relative; z-index: 1; }
+.arcade-top { box-sizing: border-box; width: 100%; padding: 14px 16px 0; display: flex; justify-content: space-between; }
+.arcade-hall-title {
+  margin: 8px 0 0; font: 900 clamp(30px, 6vw, 52px)/1 'Courier New', monospace; letter-spacing: 0.12em; color: #f5d78e;
+  text-shadow: 0 0 2px #fff6, 0 0 18px #e8a24a88, 3px 3px 0 #5a2e14;
+}
+.arcade-hall-sub { margin: 6px 0 18px; opacity: 0.75; font-size: 14px; }
+.arcade-row { display: flex; gap: 18px; padding: 8px 16px 40px; flex-wrap: wrap; justify-content: center; max-width: 1200px; }
+
+/* Mini cabinet in the menu */
+.arcade-mini {
+  --hue: #c4553a; width: 190px; padding: 0; border: 0; cursor: pointer; font-family: inherit; color: inherit; text-align: center;
+  display: flex; flex-direction: column; align-items: stretch;
+  background: linear-gradient(90deg, #3a2414, #5a3820 12%, #4a2e1a 88%, #2e1c10);
+  border-radius: 14px 14px 6px 6px; box-shadow: 0 14px 24px #0009, 0 0 0 2px #1a0f08;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.arcade-mini:hover, .arcade-mini:focus-visible { transform: translateY(-6px); box-shadow: 0 22px 30px #000a, 0 0 0 2px var(--hue); outline: none; }
+.am-marquee {
+  margin: 8px 8px 0; padding: 9px 6px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 900 13px 'Courier New', monospace; letter-spacing: 0.03em; text-transform: uppercase;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hue) 70%, #fff) 0%, var(--hue) 55%, color-mix(in srgb, var(--hue) 60%, #000) 100%);
+  color: #fff8ec; text-shadow: 1px 1px 0 #0007; box-shadow: 0 0 16px color-mix(in srgb, var(--hue) 60%, transparent);
+}
+.am-screen { position: relative; margin: 8px; height: 150px; border-radius: 10px; overflow: hidden; background: #000; border: 6px solid #111; box-shadow: 0 0 0 2px #2a2a2a inset; }
+.arcade-preview { width: 100%; height: 100%; display: block; filter: saturate(1.1) brightness(0.95); }
+.am-glass, .crt-glass {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, #0000 0 2px, #0003 2px 3px),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, #000a 100%),
+    linear-gradient(160deg, #ffffff14 0%, transparent 35%);
+}
+.am-panel { margin: 0 8px; height: 34px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 12px; background: linear-gradient(180deg, #1a1a1a, #2c2c2c); }
+.am-stick { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff9a7a, #b0301c); box-shadow: 0 3px 0 #000; }
+.am-btn { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2b0, #d9a020); box-shadow: 0 2px 0 #000; }
+.am-btn.b2 { background: radial-gradient(circle at 35% 35%, #b0d8ff, #2a70b8); }
+.am-desc { padding: 10px 12px 2px; font-size: 13px; line-height: 1.3; min-height: 50px; }
+.am-rec { padding: 4px 0 12px; font: 700 12px 'Courier New', monospace; color: #f5d78e; }
+
+/* Full cabinet while playing */
+.arcade-room.playing { justify-content: center; overflow: hidden; }
+.arcade-cab {
+  --hue: #c4553a; height: min(96dvh, 980px); width: min(94vw, calc(min(96dvh, 980px) * 0.78));
+  display: flex; flex-direction: column; padding: 0 clamp(10px, 2.4vw, 26px);
+  background: linear-gradient(90deg, #3a2414 0%, #6b4426 6%, #55361e 50%, #6b4426 94%, #3a2414 100%);
+  border-radius: 20px 20px 8px 8px; box-shadow: 0 30px 60px #000c, 0 0 0 3px #1a0f08;
+}
+.cab-marquee {
+  margin: clamp(8px, 1.6vh, 16px) 0 0; padding: clamp(8px, 1.8vh, 16px); border-radius: 8px; text-align: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hue) 65%, #fff) 0%, var(--hue) 50%, color-mix(in srgb, var(--hue) 55%, #000) 100%);
+  box-shadow: 0 0 34px color-mix(in srgb, var(--hue) 55%, transparent), 0 0 0 3px #1a0f08, inset 0 2px 0 #fff5;
+  animation: marquee-hum 3s ease-in-out infinite;
+}
+.cab-marquee span { font: 900 clamp(20px, 4.4vh, 38px)/1 'Courier New', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #fff8ec; text-shadow: 3px 3px 0 #0008; }
+@keyframes marquee-hum { 50% { filter: brightness(1.12); } }
+.cab-bezel {
+  flex: 1; min-height: 0; margin: clamp(8px, 1.6vh, 14px) 0; padding: clamp(10px, 2vh, 22px); border-radius: 12px;
+  background: linear-gradient(180deg, #0c0c0c, #1e1e1e); box-shadow: inset 0 0 0 2px #333, inset 0 10px 30px #000;
+}
+.cab-screen { position: relative; width: 100%; height: 100%; border-radius: 18px / 26px; overflow: hidden; background: #000; box-shadow: 0 0 40px #e8a24a22, inset 0 0 30px #000; }
+.cab-screen .arcade-screen { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; filter: saturate(1.15) contrast(1.05); }
+.crt-hud {
+  position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; gap: 8px; padding: 8px 14px; pointer-events: none;
+  font: 700 clamp(11px, 1.8vh, 15px) 'Courier New', monospace; color: #f5ead8; text-shadow: 0 0 6px #f5d78e88;
+}
+.crt-hud b { color: #f5d76e; }
+.crt-lives { color: #e8604a; letter-spacing: 2px; }
+.crt-status { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; pointer-events: none; font: 700 12px 'Courier New', monospace; color: #f5ead8aa; }
+.crt-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px; text-align: center;
+  background: #000a; font: 700 clamp(12px, 1.9vh, 16px)/1.4 'Courier New', monospace; color: #f5ead8; z-index: 1;
+}
+.crt-overlay small { opacity: 0.7; font-weight: 400; }
+.crt-title { font-size: clamp(22px, 4.5vh, 40px); color: #f5d76e; letter-spacing: 0.08em; text-shadow: 0 0 14px #e8a24a, 3px 3px 0 #5a2e14; }
+.crt-blink { font-size: clamp(16px, 2.6vh, 22px); color: #fff; animation: crt-blink 1s steps(1) infinite; }
+@keyframes crt-blink { 50% { opacity: 0; } }
+.crt-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.crt-glass { z-index: 2; border-radius: inherit; }
+.cab-panel {
+  flex: none; height: clamp(70px, 13vh, 120px); margin: 0 calc(-1 * clamp(10px, 2.4vw, 26px)); padding: 0 8%;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(180deg, #2a2a2a, #161616 70%), #1a1a1a; border-radius: 6px 6px 8px 8px;
+  box-shadow: inset 0 3px 0 #444, 0 -4px 10px #0006; perspective: 300px;
+}
+.cab-stick-base { width: clamp(46px, 7vh, 64px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #0a0a0a 30%, #333 32%, #222 70%); display: grid; place-items: center; }
+.cab-stick {
+  width: 46%; aspect-ratio: 1; border-radius: 50%; transform-origin: 50% 160%; transition: transform 0.08s;
+  background: radial-gradient(circle at 35% 30%, #ff9a7a, #c4301c 60%, #6a1408); box-shadow: 0 6px 0 #555, 0 9px 6px #000a;
+}
+.cab-coin { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 700 10px 'Courier New', monospace; color: #e8604a; }
+.cab-coin i { width: 26px; height: 34px; border-radius: 4px; background: #111; box-shadow: inset 0 0 0 2px #333, 0 0 10px #e8604a55; position: relative; }
+.cab-coin i::after { content: ''; position: absolute; left: 11px; top: 7px; width: 4px; height: 20px; border-radius: 2px; background: #e8604a; box-shadow: 0 0 6px #e8604a; animation: crt-blink 1.4s steps(1) infinite; }
+.cab-buttons { display: flex; gap: clamp(10px, 2vh, 18px); }
+.cab-btn {
+  width: clamp(36px, 6vh, 54px); aspect-ratio: 1; border-radius: 50%; border: 0; padding: 0; cursor: pointer; touch-action: none;
+  background: radial-gradient(circle at 35% 30%, #fff2b0, #d9a020 60%, #7a5208); box-shadow: 0 6px 0 #4a3008, 0 8px 8px #000a;
+}
+.cab-btn.lit, .cab-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #4a3008, 0 0 18px #f5d76e; filter: brightness(1.25); }
+.cab-btn.b2 { background: radial-gradient(circle at 35% 30%, #b0d8ff, #2a70b8 60%, #0e3058); box-shadow: 0 6px 0 #0a2038, 0 8px 8px #000a; }
+.arcade-room.playing .hud-corner { z-index: 3; }
+@media (max-width: 600px) {
+  .arcade-cab { width: 100vw; height: 100dvh; border-radius: 0; padding: 0 8px; }
+  .cab-panel { margin: 0 -8px; }
+  .arcade-mini { width: calc(50vw - 26px); }
+  .am-screen { height: 110px; }
+}

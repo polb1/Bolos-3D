@@ -8,6 +8,7 @@ export class SnakeGame implements ArcadeGame {
   lives = 1;
   over = false;
   status = '';
+  aspect = 1;
   body = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
   dir: Dir = 1;
   queue: Dir[] = [];

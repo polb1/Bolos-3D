@@ -32,7 +32,7 @@ Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo 
 - Online (`pseek`/`pstart` con semilla del rack): quien tira manda el tiro (`pshot`, el rival lo ve en directo) y luego la mesa resultante (`pstate`), que el rival adopta. `paim` muestra el taco del rival.
 
 ## Recreativas (`games/arcade/`)
-Tres máquinas en canvas 2D, sin online, récord en localStorage (`arcade.best`): `maze.ts` «Ratón glotón» (laberinto de persecución con diseño propio, no una copia de Pac-Man: ratón, migas, queso que asusta a los gatos), `bricks.ts` «Ladrillos», `snake.ts` «Serpiente». Interfaz común `ArcadeGame` (`step`/`draw`) en `types.ts`; `ui/ArcadeUI.tsx` lleva el menú, el bucle y la entrada (flechas/WASD, Espacio, deslizar el dedo, arrastrar la pala).
+Cinco máquinas en canvas 2D, sin online, récord en localStorage (`arcade.best`): `maze.ts` «Ratón glotón» (laberinto de persecución con diseño propio, no una copia de Pac-Man: ratón, migas, queso que asusta a los gatos), `bricks.ts` «Ladrillos», `snake.ts` «Serpiente», `planes.ts` «Escuadrilla» (biplano sobre el mar, dispara solo), `planet.ts` «Planeta en peligro» (cañón en un planeta contra rocas que se parten). Interfaz común `ArcadeGame` (`step`/`draw`) en `types.ts`; `ui/ArcadeUI.tsx` (estilos en `ui/arcade.css`) dibuja el salón con muebles de madera, marquesina iluminada, pantalla CRT, palanca y botones que reaccionan, «inserta ficha» antes de empezar; lleva el bucle y la entrada (flechas/WASD, Espacio, deslizar el dedo, arrastrar la pala).
 
 ## Chat (`net/chat.ts`, `ui/ChatUI.tsx`)
 Chat de sala en todas las pantallas (Enter o 💬), viaja como mensaje de juego `chat`. La última frase sale 12 s en un bocadillo sobre la cabeza del jugador en el local 3D (no en el local pixel).
@@ -43,7 +43,7 @@ Chat de sala en todas las pantallas (Enter o 💬), viaja como mensaje de juego 
 - **Online:** sala por `?sala=`, servidor `npm run server`; el juego debe funcionar sin servidor. Render despliega a mano (Manual Deploy) y el servidor se redespliega con el cliente.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (93 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (95 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
 
 ## Pruebas en navegador
 En desarrollo `window.__world`, `__game`, `__hockey`, `__darts`, `__pool`, `__arcade` (al abrir una máquina) y `__stores` están expuestos. Todos tienen `frame(dt)` para avanzar a mano: el panel del navegador integrado suele estar oculto y entonces `requestAnimationFrame` no corre. Para entrar en un juego: `__world.enter()`, poner `__world.pos` sobre la actividad, `__world.frame(0.016)` y `__world.interact()`. En headless los eventos del ratón llegan espaciados y la velocidad de un gesto sale falsa.

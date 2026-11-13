@@ -17,6 +17,7 @@ export class BricksGame implements ArcadeGame {
   lives = 3;
   over = false;
   status = '';
+  aspect = 1 / FH;
   level = 1;
   px = 0.5;
   ball = { x: 0.5, y: PY - BR, vx: 0, vy: 0 };

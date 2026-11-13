@@ -70,6 +70,13 @@ export class AudioEngine {
     this.tone(880, 'sine', this.ctx.currentTime, 0.05, 0.06);
   }
 
+  /** Arcade-cabinet blips: square-wave notes one after another (coin, life lost, game over). */
+  chip(freqs: number[], gap = 0.08) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    freqs.forEach((f, i) => this.tone(f, 'square', t + i * gap, 0.05, gap * 1.4));
+  }
+
   /** Soft footstep in the hall; `hard` floors (wood, tiles) click a little brighter than carpet. */
   step(hard: boolean) {
     if (!this.ctx) return;

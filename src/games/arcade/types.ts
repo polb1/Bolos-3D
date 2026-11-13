@@ -8,8 +8,11 @@ export interface ArcadeInput {
   dir: Dir | null;
   /** Held horizontal keys: -1, 0 or 1. */
   steer: number;
-  /** Pointer x over the screen (0..1) while it is being dragged, else null. */
+  /** Held vertical keys: -1 (up), 0 or 1 (down). */
+  lift: number;
+  /** Pointer over the screen (0..1 of its width / height) while it is being dragged, else null. */
   pointer: number | null;
+  pointerY: number | null;
   /** Space / tap this frame. */
   fire: boolean;
 }
@@ -21,6 +24,8 @@ export interface ArcadeGame {
   over: boolean;
   /** Short line under the score (level, hint…). */
   status: string;
+  /** Width / height of the play field, drawn centred and as large as fits. */
+  aspect: number;
   step(dt: number, input: ArcadeInput): void;
   draw(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void;
 }
