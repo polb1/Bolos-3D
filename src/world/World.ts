@@ -1,5 +1,6 @@
 import { useHockeyStore } from '../games/airhockey/store';
 import { useDartsStore } from '../games/darts/store';
+import { usePoolStore } from '../games/pool/store';
 import { audio } from '../audio/AudioEngine';
 import { useGameStore } from '../games/bowling/store/useGameStore';
 import { ACTIVITIES, nearestActivity, type Activity } from './activities';
@@ -114,6 +115,7 @@ export class World {
       if (a.place === 'bowling') useGameStore.getState().setScreen('menu');
       if (a.place === 'airhockey') useHockeyStore.getState().setScreen('menu');
       if (a.place === 'darts') useDartsStore.getState().set({ screen: 'menu' });
+      if (a.place === 'pool' && usePoolStore.getState().screen !== 'playing') usePoolStore.getState().set({ screen: 'menu' });
       w.setFade(false);
       this.busy = false;
     }, FADE_MS);

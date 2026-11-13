@@ -1,6 +1,6 @@
 # Virtual Arcade — contexto para Claude
 
-Salón de juegos en el navegador: un local 3D en tercera persona con bolera, air hockey y dardos jugables (billar, futbolín y recreativas aún «Próximamente»). Repo: https://github.com/polb1/Bolos-3D. Lee también `README.md`, `ARCHITECTURE.md` y `REVERSE_ENGINEERING.md`. Responde en español.
+Salón de juegos en el navegador: un local 3D en tercera persona con bolera, air hockey, dardos y billar jugables (futbolín y recreativas aún «Próximamente»). Repo: https://github.com/polb1/Bolos-3D. Lee también `README.md`, `ARCHITECTURE.md` y `REVERSE_ENGINEERING.md`. Responde en español.
 
 ## Estilo visual (decisión del usuario, nov 2026)
 Local cálido y acogedor, nada futurista ni neones: suelo de roble, yeso con zócalo de madera, ladrillo tras la barra, vigas, lámparas colgantes de luz cálida, alfombras, sofás, cuadros y plantas. Rótulos de madera pintada (`woodSign`). La interfaz usa paneles color espresso, texto crema y acento ámbar (`--lime` y `--blue-*` en `styles.css` conservan el nombre antiguo: son el acento y los tonos suaves). Los minijuegos ocurren dentro del mismo salón (`world3d/lounge.ts`).
@@ -26,17 +26,25 @@ Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo 
 - `Darts.ts`: escena, gesto (pulsar = apuntar, echar atrás y lanzar), partidas al mejor de 5 legs contra la IA (Fácil/Media/Experta ≈ 50/30/20 dardos por leg) u online (se envían origen y velocidad del tiro; ambos lados simulan lo mismo). Cartel de reglas clicable con zoom (`poster.ts`).
 - La fuerza del gesto cambia poco la velocidad (exponente 0,05): un 5 % más de velocidad ya sube el dardo ~10 cm.
 
+## Billar (`games/pool/`)
+- `physics.ts` (puro, con tests): mesa de 8 pies, bolas de 57 mm, troneras como huecos en las bandas, pasos fijos de 1/600 s. Solo usa + - * / y `Math.sqrt`, así dos navegadores simulan lo mismo. `rules.ts`: bola 8 (grupos, faltas, bola en mano, 8 antes de tiempo). `ai.ts`: prueba tiros de bola fantasma a cada tronera simulándolos y añade el error de su nivel.
+- `Pool.ts`: cámara 3D tras la blanca o cenital (botón 🎥 / C), apuntar arrastrando, barra de fuerza (o Espacio). Modos: IA, online 1 contra 1, 2 jugadores en un dispositivo, práctica.
+- Online (`pseek`/`pstart` con semilla del rack): quien tira manda el tiro (`pshot`, el rival lo ve en directo) y luego la mesa resultante (`pstate`), que el rival adopta. `paim` muestra el taco del rival.
+
+## Chat (`net/chat.ts`, `ui/ChatUI.tsx`)
+Chat de sala en todas las pantallas (Enter o 💬), viaja como mensaje de juego `chat`. La última frase sale 12 s en un bocadillo sobre la cabeza del jugador en el local 3D (no en el local pixel).
+
 ## Decisiones del usuario (no deshacer)
 - **Bolera:** sin barra de potencia ni línea de tiro: se agarra la bola, se echa atrás y se suelta; al llegar a la línea de falta sale sola con la velocidad de la mano; `Q`/`E` o la rueda dan efecto. Dispersión humana y bolos que pueden tambalearse; los resultados siempre salen de la física.
 - **Dardos:** primer diseño (diana clásica de bar, pared lisa), sin mira, dardo centrado abajo, línea a 2,37 m.
 - **Online:** sala por `?sala=`, servidor `npm run server`; el juego debe funcionar sin servidor. Render despliega a mano (Manual Deploy) y el servidor se redespliega con el cliente.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (76 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (88 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
 
 ## Pruebas en navegador
-En desarrollo `window.__world`, `__game`, `__hockey`, `__darts` y `__stores` están expuestos. Todos tienen `frame(dt)` para avanzar a mano: el panel del navegador integrado suele estar oculto y entonces `requestAnimationFrame` no corre. Para entrar en un juego: `__world.enter()`, poner `__world.pos` sobre la actividad, `__world.frame(0.016)` y `__world.interact()`. En headless los eventos del ratón llegan espaciados y la velocidad de un gesto sale falsa.
+En desarrollo `window.__world`, `__game`, `__hockey`, `__darts`, `__pool` y `__stores` están expuestos. Todos tienen `frame(dt)` para avanzar a mano: el panel del navegador integrado suele estar oculto y entonces `requestAnimationFrame` no corre. Para entrar en un juego: `__world.enter()`, poner `__world.pos` sobre la actividad, `__world.frame(0.016)` y `__world.interact()`. En headless los eventos del ratón llegan espaciados y la velocidad de un gesto sale falsa.
 
 ## Pendiente / sin verificar
 - Probar con GPU, ratón y dedo reales: sensación de los gestos, rendimiento del local en móviles modestos, sonido.
-- Billar, futbolín y recreativas siguen sin juego.
+- Futbolín y recreativas siguen sin juego. Billar: sin efectos (retroceso, efecto lateral) y sin probar con ratón/dedo reales.

@@ -11,6 +11,8 @@ import { H as CEILING, Hall, SPAWN } from './Hall';
 import { OUTFITS, useWorldStore } from '../world/worldStore';
 import { useHockeyStore } from '../games/airhockey/store';
 import { useDartsStore } from '../games/darts/store';
+import { lastSaid } from '../net/chat';
+import { usePoolStore } from '../games/pool/store';
 import { net } from '../net/client';
 import { hockeyRef } from '../games/airhockey/instance';
 import { HockeyLobby, NET_OFFSET, SPOT_R, SPOTS, useLobbyStore } from './hockeyLobby';
@@ -28,6 +30,9 @@ interface Ghost {
   avatar: Avatar;
   tag: THREE.Sprite;
   label: string;
+  /** Last chat line over the head. */
+  bubble: THREE.Sprite;
+  said: string;
   outfit: number;
   lastX: number;
   lastZ: number;
@@ -43,6 +48,9 @@ export class World {
   private readonly camera = new THREE.PerspectiveCamera(60, 1, 0.05, 80);
   private readonly hall = new Hall();
   private readonly avatar: Avatar;
+  /** Our own last chat line, over our head. */
+  private readonly myBubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
+  private readonly mySaid = { said: '' };
   private readonly clock = new THREE.Clock();
   private readonly raycaster = new THREE.Raycaster();
   private readonly markers = new Map<string, THREE.Group>();
@@ -88,6 +96,7 @@ export class World {
     pmrem.dispose();
 
     this.avatar = new Avatar(OUTFITS[useWorldStore.getState().outfit]?.outfit ?? OUTFITS[0].outfit);
+    this.scene.add(this.myBubble);
     this.scene.add(this.hall.group, this.avatar.root);
     this.buildMarkers();
     this.buildSpots();
@@ -177,6 +186,7 @@ export class World {
       if (a.place === 'bowling') useGameStore.getState().setScreen('menu');
       if (a.place === 'airhockey') useHockeyStore.getState().setScreen('menu');
       if (a.place === 'darts') useDartsStore.getState().set({ screen: 'menu' });
+      if (a.place === 'pool' && usePoolStore.getState().screen !== 'playing') usePoolStore.getState().set({ screen: 'menu' });
       w.setFade(false);
       this.busy = false;
     }, FADE_MS);
@@ -303,7 +313,8 @@ export class World {
   private updateGhosts(dt: number) {
     for (const [id, g] of this.ghosts) {
       if (net.peers.has(id)) continue;
-      this.scene.remove(g.avatar.root, g.tag);
+      this.scene.remove(g.avatar.root, g.tag, g.bubble);
+      g.bubble.material.map?.dispose();
       g.tag.material.map?.dispose();
       g.tag.material.dispose();
       this.ghosts.delete(id);
@@ -315,13 +326,15 @@ export class World {
       if (!g) {
         const avatar = new Avatar(OUTFITS[p.outfit]?.outfit ?? OUTFITS[0].outfit);
         const tag = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
-        g = { avatar, tag, label: '', outfit: p.outfit, lastX: x, lastZ: z };
-        this.scene.add(avatar.root, tag);
+        const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
+        g = { avatar, tag, label: '', bubble, said: '', outfit: p.outfit, lastX: x, lastZ: z };
+        this.scene.add(avatar.root, tag, bubble);
         this.ghosts.set(p.id, g);
       }
       if (g.outfit !== p.outfit) g.avatar.setOutfit(OUTFITS[(g.outfit = p.outfit)]?.outfit ?? OUTFITS[0].outfit);
-      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : p.place === 'darts' ? 'dardos' : 'air hockey'}`;
-      if (label !== g.label) this.setTag(g, label);
+      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : p.place === 'darts' ? 'dardos' : p.place === 'pool' ? 'billar' : 'air hockey'}`;
+      if (label !== g.label) this.drawLabel(g.tag, (g.label = label), '#000000aa', '#eaf2ff');
+      this.setBubble(g.bubble, g, lastSaid(p.id));
       // Facing and gait come from how far the eased position moved this frame.
       const vx = (x - g.lastX) / Math.max(dt, 1e-3);
       const vz = (z - g.lastZ) / Math.max(dt, 1e-3);
@@ -330,13 +343,23 @@ export class World {
       g.avatar.root.position.set(x, 0, z);
       g.avatar.update(dt, p.place === 'world' ? speed : 0, this.time);
       g.tag.position.set(x, 2.15, z);
+      g.bubble.position.set(x, 2.5, z);
       g.lastX = x;
       g.lastZ = z;
     }
   }
 
-  private setTag(g: Ghost, label: string) {
-    g.label = label;
+  /** Shows `text` in a speech bubble sprite (hidden when empty), redrawing only on change. */
+  private setBubble(sprite: THREE.Sprite, holder: { said: string }, text: string) {
+    sprite.visible = !!text;
+    if (text !== holder.said) {
+      holder.said = text;
+      if (text) this.drawLabel(sprite, text.length > 40 ? text.slice(0, 39) + '…' : text, '#f3e6d0ee', '#2a1a10');
+    }
+  }
+
+  /** Draws a rounded label into a sprite's texture and sizes it. */
+  private drawLabel(sprite: THREE.Sprite, label: string, bg: string, fg: string) {
     const c = document.createElement('canvas');
     const ctx = c.getContext('2d')!;
     const font = 'bold 40px ui-sans-serif, system-ui, sans-serif';
@@ -344,20 +367,20 @@ export class World {
     c.width = Math.ceil(ctx.measureText(label).width) + 32;
     c.height = 60;
     ctx.font = font;
-    ctx.fillStyle = '#000000aa';
+    ctx.fillStyle = bg;
     ctx.beginPath();
     ctx.roundRect(0, 0, c.width, c.height, 14);
     ctx.fill();
-    ctx.fillStyle = '#eaf2ff';
+    ctx.fillStyle = fg;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, c.width / 2, c.height / 2 + 2);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    g.tag.material.map?.dispose();
-    g.tag.material.map = tex;
-    g.tag.material.needsUpdate = true;
-    g.tag.scale.set((c.width / c.height) * 0.28, 0.28, 1);
+    sprite.material.map?.dispose();
+    sprite.material.map = tex;
+    sprite.material.needsUpdate = true;
+    sprite.scale.set((c.width / c.height) * 0.28, 0.28, 1);
   }
 
   // ------------------------------------------------------------------ input
@@ -469,6 +492,8 @@ export class World {
     else this.vel.multiplyScalar(0);
     this.avatar.update(dt, this.vel.length(), this.time);
     this.updateGhosts(dt);
+    this.setBubble(this.myBubble, this.mySaid, lastSaid('me'));
+    this.myBubble.position.set(this.pos.x, 2.5, this.pos.z);
     const exploring = w.screen === 'explore' && !this.busy;
     this.lobby.update(dt, exploring ? this.pos.x : null, exploring ? this.pos.z : null);
     this.updateSpots();
