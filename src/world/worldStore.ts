@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { storage } from '../utils/storage';
 
 /** Which layer is live: the arcade hall or one of its activities. */
-export type Place = 'world' | 'bowling' | 'airhockey' | 'darts' | 'pool';
+export type Place = 'world' | 'bowling' | 'airhockey' | 'darts' | 'pool' | 'arcade';
 /** How the hall is drawn: 3D third person (default) or the top-down pixel-art map. */
 export type HallStyle = '3d' | 'pixel';
 export type WorldScreen = 'loading' | 'title' | 'character' | 'controls' | 'stats' | 'explore' | 'paused';

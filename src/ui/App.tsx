@@ -20,6 +20,7 @@ import { dartsRef } from '../games/darts/instance';
 import { DartsUI } from '../games/darts/ui/DartsUI';
 import { poolRef } from '../games/pool/instance';
 import { PoolUI } from '../games/pool/ui/PoolUI';
+import { ArcadeUI } from '../games/arcade/ui/ArcadeUI';
 import { ChatUI } from './ChatUI';
 
 export function App() {
@@ -97,6 +98,7 @@ export function App() {
       {place === 'airhockey' && <AirHockeyUI />}
       {place === 'darts' && <DartsUI />}
       {place === 'pool' && <PoolUI />}
+      {place === 'arcade' && <ArcadeUI />}
       {worldScreen !== 'loading' && worldScreen !== 'title' && <ChatUI />}
       <Fade />
     </>

@@ -332,7 +332,7 @@ export class World {
         this.ghosts.set(p.id, g);
       }
       if (g.outfit !== p.outfit) g.avatar.setOutfit(OUTFITS[(g.outfit = p.outfit)]?.outfit ?? OUTFITS[0].outfit);
-      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : p.place === 'darts' ? 'dardos' : p.place === 'pool' ? 'billar' : 'air hockey'}`;
+      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : p.place === 'darts' ? 'dardos' : p.place === 'pool' ? 'billar' : p.place === 'arcade' ? 'recreativas' : 'air hockey'}`;
       if (label !== g.label) this.drawLabel(g.tag, (g.label = label), '#000000aa', '#eaf2ff');
       this.setBubble(g.bubble, g, lastSaid(p.id));
       // Facing and gait come from how far the eased position moved this frame.

@@ -47,7 +47,7 @@ export const ACTIVITIES: Activity[] = [
   { id: 'foosball-1', name: 'Futbolín', x: -1.6, z: 1.2, radius: 1.6, place: null, color: '#8fb86a' },
   { id: 'foosball-2', name: 'Futbolín', x: 2.6, z: 1.2, radius: 1.6, place: null, color: '#8fb86a' },
   { id: 'darts', name: 'Dardos', x: -13.2, z: 2.5, radius: 2.4, place: 'darts', color: '#e0a050' },
-  { id: 'arcade', name: 'Recreativas', x: 13.4, z: 10.1, radius: 2.4, place: null, color: '#b08ac0' },
+  { id: 'arcade', name: 'Recreativas', x: 13.4, z: 10.1, radius: 2.4, place: 'arcade', color: '#b08ac0' },
 ];
 
 /** Closest activity whose radius contains the point, or null. */
