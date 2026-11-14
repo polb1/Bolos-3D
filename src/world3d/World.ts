@@ -7,14 +7,16 @@ import { damp } from '../utils/math';
 import { ACTIVITIES, nearestActivity, type Activity } from './activities';
 import { Avatar } from './Avatar';
 import { resolve } from '../world/collide';
-import { H as CEILING, Hall, SPAWN } from './Hall';
+import { H as CEILING, Hall, HX, HZ, SPAWN } from './Hall';
 import { OUTFITS, useWorldStore } from '../world/worldStore';
 import { useHockeyStore } from '../games/airhockey/store';
 import { useDartsStore } from '../games/darts/store';
 import { lastSaid } from '../net/chat';
 import { useFoosStore } from '../games/foosball/store';
 import { usePoolStore } from '../games/pool/store';
-import { net } from '../net/client';
+import { net, useAdminStore } from '../net/client';
+import type { DecorItem, DecorKind } from '../net/protocol';
+import { DECOR } from './decor';
 import { hockeyRef } from '../games/airhockey/instance';
 import { HockeyLobby, NET_OFFSET, SPOT_R, SPOTS, useLobbyStore } from './hockeyLobby';
 
@@ -109,7 +111,9 @@ export class World {
       if (st.outfit !== prev.outfit) this.avatar.setOutfit(OUTFITS[st.outfit].outfit);
       if (st.screen !== prev.screen && st.screen !== 'explore') this.keys.clear();
     });
-    this.unsub = () => (unsubQuality(), unsubWorld());
+    this.hall.applyConfig(useAdminStore.getState().config);
+    const unsubAdmin = useAdminStore.subscribe((st, prev) => st.config !== prev.config && this.hall.applyConfig(st.config));
+    this.unsub = () => (unsubQuality(), unsubWorld(), unsubAdmin());
 
     const c = this.renderer.domElement;
     window.addEventListener('keydown', this.onKeyDown);
@@ -171,7 +175,28 @@ export class World {
       w.showToast(`${a.name} · en construcción, ¡muy pronto!`);
       return;
     }
+    if (useAdminStore.getState().config.closed.includes(a.place as never)) {
+      audio.ui();
+      w.showToast(`${a.name} · cerrado por el administrador`);
+      return;
+    }
     this.start(a);
+  }
+
+  /** Where a new decoration goes: on the wall nearest the player, or on the floor in front of them. */
+  decorSpot(kind: DecorKind, v: number): DecorItem {
+    const { x, z } = this.pos;
+    if (!DECOR[kind].wall) {
+      const f = this.facing;
+      return { kind, v, x: x + Math.sin(f) * 1.2, z: z + Math.cos(f) * 1.2, y: 0, r: f + Math.PI };
+    }
+    const walls: Array<[number, DecorItem]> = [
+      [z + HZ, { kind, v, x, z: -HZ + 0.03, y: 2.2, r: 0 }],
+      [HZ - z, { kind, v, x, z: HZ - 0.03, y: 2.2, r: Math.PI }],
+      [x + HX, { kind, v, x: -HX + 0.03, z, y: 2.2, r: Math.PI / 2 }],
+      [HX - x, { kind, v, x: HX - 0.03, z, y: 2.2, r: -Math.PI / 2 }],
+    ];
+    return walls.sort((a, b) => a[0] - b[0])[0][1];
   }
 
   private start(a: Activity) {
@@ -196,6 +221,7 @@ export class World {
 
   /** Both players said ready on an air hockey table: open the online match. */
   private startOnline(role: 'host' | 'guest', rival: { id: string; name: string }, _table: number) {
+    if (useAdminStore.getState().config.closed.includes('airhockey')) return useWorldStore.getState().showToast('Air hockey · cerrado por el administrador');
     const w = useWorldStore.getState();
     this.busy = true;
     audio.ui();

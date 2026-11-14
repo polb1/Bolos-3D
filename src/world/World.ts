@@ -9,7 +9,7 @@ import { resolve, type Box } from './collide';
 import { drawStatic, MAP_H, MAP_W, PROPS, ROOMS, roomAt, solids, SPAWN } from './map';
 import { character, px, TILE } from './sprites';
 import { OUTFITS, useWorldStore } from './worldStore';
-import { net } from '../net/client';
+import { net, useAdminStore } from '../net/client';
 
 const WALK = 4.2; // tiles / s
 const RUN = 7.5;
@@ -100,6 +100,10 @@ export class World {
     if (!a.place) {
       audio.ui();
       w.showToast(`${a.name} · en construcción, ¡muy pronto!`);
+      return;
+    }
+    if (useAdminStore.getState().config.closed.includes(a.place as never)) {
+      w.showToast(`${a.name} · cerrado por el administrador`);
       return;
     }
     this.start(a);

@@ -5,6 +5,8 @@ import { laneWoodTexture } from '../games/bowling/scene/textures';
 import { box, type Box } from '../world/collide';
 import * as P from './props';
 import { HOCKEY_TABLES } from './activities';
+import { buildDecor, DECOR } from './decor';
+import type { HallConfig } from '../net/protocol';
 import { brick, darkWood, plaster, wainscot, woodFloor } from './textures';
 
 /** Hall footprint: x ∈ [-HX, HX], z ∈ [-HZ, HZ]. */
@@ -29,6 +31,11 @@ export class Hall {
   readonly colliders: Box[] = [];
   readonly occluders: THREE.Object3D[] = [];
   private fire: { flames: THREE.Group; light: THREE.PointLight } | null = null;
+  /** What the admin config recolours, and the admin's decorations. */
+  private wallMat!: THREE.MeshStandardMaterial;
+  private floorMat!: THREE.MeshStandardMaterial;
+  private roomLights: THREE.PointLight[] = [];
+  private readonly adminDecor = new THREE.Group();
 
   constructor() {
     this.shell();
@@ -43,6 +50,21 @@ export class Hall {
     this.entrance();
     this.decor();
     this.lights();
+    this.group.add(this.adminDecor);
+  }
+
+  /** Applies the admin's colours and rebuilds their decorations. */
+  applyConfig(cfg: HallConfig) {
+    this.wallMat.color.set(cfg.wall);
+    this.floorMat.color.set(cfg.floor);
+    for (const l of this.roomLights) l.color.set(cfg.light);
+    this.adminDecor.clear();
+    for (const d of cfg.decor) {
+      const o = buildDecor(d.kind, d.v);
+      o.position.set(d.x, DECOR[d.kind].wall ? d.y : 0, d.z);
+      o.rotation.y = d.r;
+      this.adminDecor.add(o);
+    }
   }
 
   /** Places an object and blocks a floor footprint for the player. */
@@ -77,11 +99,12 @@ export class Hall {
   }
 
   private shell() {
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * HX, 2 * HZ), new THREE.MeshStandardMaterial({ map: woodFloor([20, 17.5]), roughness: 0.5, color: 0xd8ccc0 }));
+    this.floorMat = new THREE.MeshStandardMaterial({ map: woodFloor([20, 17.5]), roughness: 0.5, color: 0xd8ccc0 });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * HX, 2 * HZ), this.floorMat);
     floor.rotation.x = -Math.PI / 2;
     this.group.add(floor);
 
-    const wallMat = new THREE.MeshStandardMaterial({ map: plaster([8, 1.2]), roughness: 0.95 });
+    const wallMat = (this.wallMat = new THREE.MeshStandardMaterial({ map: plaster([8, 1.2]), roughness: 0.95 }));
     const panelMat = new THREE.MeshStandardMaterial({ map: wainscot([24, 1]), roughness: 0.6 });
     const walls: Array<[number, number, number, number]> = [
       [0, -HZ - T / 2, 2 * HX + 2 * T, T],
@@ -215,7 +238,10 @@ export class Hall {
     rack.position.set(10, 0.4, -HZ + 0.1);
     this.group.add(rack);
     this.sign('BILLAR', 0.45, 10, 3.2, -HZ + 0.06, 0);
-    this.onWall(P.wallFlag(), 'n', 14.3, 2.7);
+    // Flag between a photo of Pedro Sánchez (La Moncloa, CC BY) and the emoji picture.
+    this.onWall(buildDecor('bandera-il'), 'n', 14, 2.7);
+    this.onWall(buildDecor('foto-sanchez'), 'n', 12.6, 2.2);
+    this.onWall(buildDecor('emoji-china'), 'n', 15.3, 2.2);
   }
 
   private airHockey() {
@@ -379,6 +405,7 @@ export class Hall {
       const l = new THREE.PointLight(WARM, 16, 11, 1.4);
       l.position.set(x, H - 1.5, z);
       this.group.add(l);
+      this.roomLights.push(l);
     }
   }
 }

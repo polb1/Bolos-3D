@@ -40,13 +40,17 @@ Cinco máquinas en canvas 2D, sin online, récord en localStorage (`arcade.best`
 ## Chat (`net/chat.ts`, `ui/ChatUI.tsx`)
 Chat de sala en todas las pantallas (Enter o 💬), viaja como mensaje de juego `chat`. La última frase sale 12 s en un bocadillo sobre la cabeza del jugador en el local 3D (no en el local pixel).
 
+## Modo administrador (`ui/AdminPanel.tsx`, `net/protocol.ts`, `server/server.ts`, `world3d/decor.ts`)
+Escribir la palabra de administrador en el chat (en el cliente solo está su SHA-256 en `net/chat.ts`) pide al servidor el modo admin; el servidor la compara con la variable de entorno `ADMIN_PASSWORD` (sin ella nadie es admin; 5 intentos por conexión). El admin abre el panel 🛠: colores de paredes, suelo y luz, juegos abiertos/cerrados y decoración (cuadros, banderas, fotos reales de `public/decor/`, reloj, espejo, diana, muebles) colocada en la pared más cercana o delante del jugador. La configuración (`HallConfig`, validada con `parseConfig`) es una sola para todo el servidor, se envía al entrar y a todos al cambiar, y se guarda en `CONFIG_FILE` (por defecto `data/hall-config.json`). En Render gratis el disco se borra al reiniciar o desplegar.
+Junto a la bandera de Israel del billar: foto de Pedro Sánchez (Wikimedia, La Moncloa, CC BY) y una imagen de emoji con bandera china (Freepik), ambas con placa de crédito.
+
 ## Decisiones del usuario (no deshacer)
 - **Bolera:** sin barra de potencia ni línea de tiro: se agarra la bola, se echa atrás y se suelta; al llegar a la línea de falta sale sola con la velocidad de la mano; `Q`/`E` o la rueda dan efecto. Dispersión humana y bolos que pueden tambalearse; los resultados siempre salen de la física.
 - **Dardos:** primer diseño (diana clásica de bar, pared lisa), sin mira, dardo centrado abajo, línea a 2,37 m.
 - **Online:** sala por `?sala=`, servidor `npm run server`; el juego debe funcionar sin servidor. Render despliega a mano (Manual Deploy) y el servidor se redespliega con el cliente.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (97 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (98 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
 
 ## Pruebas en navegador
 En desarrollo `window.__world`, `__game`, `__hockey`, `__darts`, `__pool`, `__arcade` (al abrir una máquina), `__foos` y `__stores` están expuestos. Todos tienen `frame(dt)` para avanzar a mano: el panel del navegador integrado suele estar oculto y entonces `requestAnimationFrame` no corre. Para entrar en un juego: `__world.enter()`, poner `__world.pos` sobre la actividad, `__world.frame(0.016)` y `__world.interact()`. En headless los eventos del ratón llegan espaciados y la velocidad de un gesto sale falsa.

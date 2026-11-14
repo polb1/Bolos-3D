@@ -6,10 +6,12 @@
  * Run: npm run server   (PORT env, default 8787)
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { extname, join, normalize, sep } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { timingSafeEqual } from 'node:crypto';
+import { dirname, extname, join, normalize, sep } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { cleanRoom, MAX_MSG_BYTES, MAX_PLAYERS, parseClient, type Peer, type ServerMsg } from '../src/net/protocol.ts';
+import { cleanRoom, DEFAULT_CONFIG, MAX_MSG_BYTES, MAX_PLAYERS, parseClient, parseConfig, type HallConfig, type Peer, type ServerMsg } from '../src/net/protocol.ts';
 
 interface Client {
   ws: WebSocket;
@@ -19,6 +21,16 @@ interface Client {
   burst: number;
   /** Answered the last keepalive ping. */
   alive: boolean;
+  /** Logged in with the admin password, and failed attempts so far. */
+  admin: boolean;
+  tries: number;
+}
+
+/** Constant-time password check; no ADMIN_PASSWORD set means nobody is admin. */
+function isAdminKey(key: string, pass = process.env.ADMIN_PASSWORD ?? '') {
+  const a = Buffer.from(key);
+  const b = Buffer.from(pass);
+  return pass.length > 0 && a.length === b.length && timingSafeEqual(a, b);
 }
 
 const MAX_PER_SECOND = 90; // online air hockey sends ~30 state updates/s on top of hall moves
@@ -33,6 +45,8 @@ const TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.json': 'application/json',
   '.ico': 'image/x-icon',
+  '.jpg': 'image/jpeg',
+  '.avif': 'image/avif',
 };
 
 /** Serves the built game (dist/) so one host gives both the page and the room on the same domain. */
@@ -54,7 +68,15 @@ const serveStatic = async (req: IncomingMessage, res: ServerResponse) => {
   }
 };
 
-export function startServer(port = 8787) {
+export function startServer(port = 8787, configFile = process.env.CONFIG_FILE ?? join(import.meta.dirname, '..', 'data', 'hall-config.json')) {
+  // The admin's hall config, shared by every room; kept on disk so a restart keeps it.
+  let config: HallConfig = DEFAULT_CONFIG;
+  try {
+    config = parseConfig(JSON.parse(readFileSync(configFile, 'utf8')));
+  } catch {
+    /* first run: defaults */
+  }
+  const saveConfig = () => mkdir(dirname(configFile), { recursive: true }).then(() => writeFile(configFile, JSON.stringify(config))).catch((e) => console.error('No se pudo guardar la configuración', e));
   const rooms = new Map<string, Set<Client>>();
   const server = createServer(serveStatic);
   const wss = new WebSocketServer({ server, maxPayload: MAX_MSG_BYTES });
@@ -78,7 +100,7 @@ export function startServer(port = 8787) {
       return;
     }
     rooms.set(room, set);
-    const c: Client = { ws, peer: null, room, burst: 0, alive: true };
+    const c: Client = { ws, peer: null, room, burst: 0, alive: true, admin: false, tries: 0 };
     set.add(c);
     ws.on('pong', () => (c.alive = true));
 
@@ -91,12 +113,22 @@ export function startServer(port = 8787) {
         c.peer = { id: `p${nextId++}`, name: m.name, outfit: m.outfit, x: 21.5, y: 27.2, dir: 3, moving: false, place: 'world' };
         send(c, { t: 'welcome', id: c.peer.id, room, peers: others(c).map((o) => o.peer!) });
         broadcast(c, { t: 'join', peer: c.peer });
+        send(c, { t: 'config', cfg: config });
       } else if (!c.peer) return;
       else if (m.t === 'pos') {
         const { t: _, ...pos } = m;
         Object.assign(c.peer, pos);
         broadcast(c, { t: 'pos', id: c.peer.id, ...pos });
       } else if (m.t === 'game') broadcast(c, { t: 'game', id: c.peer.id, data: m.data });
+      else if (m.t === 'admin') {
+        // A few tries per connection: guessing means reconnecting each time.
+        c.admin = ++c.tries <= 5 && isAdminKey(m.key);
+        send(c, { t: 'admin', ok: c.admin });
+      } else if (m.t === 'config' && c.admin) {
+        config = m.cfg;
+        void saveConfig();
+        rooms.forEach((set) => set.forEach((o) => o.peer && send(o, { t: 'config', cfg: config })));
+      }
     });
 
     ws.on('close', () => {

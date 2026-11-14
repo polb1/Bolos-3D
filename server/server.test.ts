@@ -2,12 +2,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { parseClient, parseServer, type ServerMsg } from '../src/net/protocol.ts';
 import { startServer } from './server.ts';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const PORT = 18787;
 let srv: ReturnType<typeof startServer>;
 
 beforeAll(() => {
-  srv = startServer(PORT);
+  process.env.ADMIN_PASSWORD = 'secreto';
+  srv = startServer(PORT, join(tmpdir(), `hall-config-${process.pid}.json`));
 });
 afterAll(() => srv.close());
 
@@ -85,7 +88,31 @@ describe('room server', () => {
     expect((await a.next('welcome')).peers).toEqual([]);
     expect((await b.next('welcome')).peers).toEqual([]);
     await new Promise((r) => setTimeout(r, 50));
-    expect(a.inbox).toEqual([]);
+    expect(a.inbox.filter((m) => m.t !== 'config')).toEqual([]); // the hall config always comes after the welcome
     [a, b, lurker].forEach((c) => c.ws.close());
+  });
+});
+
+describe('admin', () => {
+  it('only the right password can change the hall config, and everyone receives it', async () => {
+    const a = client('adm1');
+    const b = client('adm2');
+    await Promise.all([a.open, b.open]);
+    a.send({ t: 'hello', name: 'A', outfit: 0 });
+    b.send({ t: 'hello', name: 'B', outfit: 0 });
+    expect((await a.next('config')).cfg.closed).toEqual([]);
+    await b.next('config');
+    a.send({ t: 'config', cfg: { wall: '#ff0000', closed: ['pool'] } });
+    a.send({ t: 'admin', key: 'mal' });
+    expect((await a.next('admin')).ok).toBe(false);
+    a.send({ t: 'admin', key: 'secreto' });
+    expect((await a.next('admin')).ok).toBe(true);
+    a.send({ t: 'config', cfg: { wall: '#ff0000', closed: ['pool', 'moon'], decor: [{ kind: 'planta', x: 1, z: 2 }, { kind: 'bomba', x: 0, z: 0 }] } });
+    const got = await b.next('config'); // another room gets it too
+    expect(got.cfg.wall).toBe('#ff0000');
+    expect(got.cfg.closed).toEqual(['pool']);
+    expect(got.cfg.decor.map((d) => d.kind)).toEqual(['planta']);
+    a.ws.close();
+    b.ws.close();
   });
 });

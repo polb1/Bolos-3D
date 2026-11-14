@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { airHockeyTop, arcadeScreen, brick, dartboard, darkWood, foosballPitch, israelFlag, painting, rug as rugTexture, signBoard } from './textures';
+import { airHockeyTop, arcadeScreen, brick, dartboard, darkWood, foosballPitch, painting, rug as rugTexture, signBoard } from './textures';
 
 /** Furniture and machines for the hall. Every builder returns a group standing on y = 0. */
 
@@ -439,16 +439,3 @@ export function bench(color: number) {
   return g;
 }
 
-/** Flag of Israel hung on a wall from a wooden pole (faces +z). */
-export function wallFlag(w = 1.1) {
-  const g = new THREE.Group();
-  const cloth = mesh(new THREE.PlaneGeometry(w, w * (8 / 11), 12, 1), new THREE.MeshStandardMaterial({ map: israelFlag(), roughness: 0.9, side: THREE.DoubleSide }), 0, -w * (4 / 11), 0.03);
-  // Gentle folds so it reads as cloth.
-  const p = cloth.geometry.attributes.position;
-  for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin(p.getX(i) * 9) * 0.015);
-  g.add(cloth);
-  const pole = mesh(new THREE.CylinderGeometry(0.015, 0.015, w + 0.16, 10), wood, 0, 0.01, 0.04);
-  pole.rotation.z = Math.PI / 2;
-  g.add(pole);
-  return g;
-}

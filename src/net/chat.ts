@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { useWorldStore } from '../world/worldStore';
 import { net } from './client';
 
+/** SHA-256 of the admin word: typing it in the chat asks the server for admin mode instead of sending it. */
+const ADMIN_HASH = '31ab58d2aafdbdff3c943d84830178119098ab427d9dec9fd24c7c3af4cec832';
+const sha256 = async (t: string) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
 export const MAX_CHAT = 120;
 /** Seconds a line stays over the speaker's head. */
 export const BUBBLE_TIME = 12;
@@ -26,9 +30,13 @@ const add = (from: string, name: string, text: string) =>
 /** Cleans a line typed or received: one line, trimmed, capped. */
 export const cleanChat = (t: unknown) => (typeof t === 'string' ? t.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, MAX_CHAT) : '');
 
-export function sendChat(text: string) {
+export async function sendChat(text: string) {
   const t = cleanChat(text);
   if (!t) return;
+  if (!t.includes(' ') && t.length < 40 && crypto.subtle && (await sha256(t)) === ADMIN_HASH) {
+    net.adminLogin(t, (ok) => add('sys', 'Sistema', ok ? 'Modo administrador activado (botón 🛠)' : 'No se pudo activar el modo administrador (¿sin conexión?)'));
+    return;
+  }
   net.sendGame({ k: 'chat', text: t });
   add('me', useWorldStore.getState().name || 'Tú', t);
 }

@@ -22,6 +22,7 @@ import { poolRef } from '../games/pool/instance';
 import { PoolUI } from '../games/pool/ui/PoolUI';
 import { ArcadeUI } from '../games/arcade/ui/ArcadeUI';
 import { ChatUI } from './ChatUI';
+import { AdminPanel } from './AdminPanel';
 import { foosRef } from '../games/foosball/instance';
 import { FoosballUI } from '../games/foosball/ui/FoosballUI';
 
@@ -107,6 +108,7 @@ export function App() {
       {place === 'arcade' && <ArcadeUI />}
       {place === 'foosball' && <FoosballUI />}
       {worldScreen !== 'loading' && worldScreen !== 'title' && <ChatUI />}
+      {place === 'world' && worldScreen === 'explore' && <AdminPanel />}
       <Fade />
     </>
   );

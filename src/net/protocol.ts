@@ -9,7 +9,7 @@ export type NetPlace = 'world' | 'bowling' | 'airhockey' | 'darts' | 'pool' | 'a
 const PLACES: NetPlace[] = ['world', 'bowling', 'airhockey', 'darts', 'pool', 'arcade', 'foosball'];
 
 export const MAX_NAME = 16;
-export const MAX_MSG_BYTES = 2048;
+export const MAX_MSG_BYTES = 4096; // fits a full hall config (24 decorations)
 export const MAX_PLAYERS = 32;
 export const OUTFIT_COUNT = 4;
 
@@ -32,7 +32,11 @@ export type ClientMsg =
   | { t: 'hello'; name: string; outfit: number }
   | ({ t: 'pos' } & PeerPos)
   /** Free-form payload for minigames, relayed to the rest of the room. */
-  | { t: 'game'; data: unknown };
+  | { t: 'game'; data: unknown }
+  /** Admin login attempt; the server checks it against ADMIN_PASSWORD. */
+  | { t: 'admin'; key: string }
+  /** New hall config, only accepted from a logged-in admin. */
+  | { t: 'config'; cfg: HallConfig };
 
 export type ServerMsg =
   | { t: 'welcome'; id: string; room: string; peers: Peer[] }
@@ -40,7 +44,54 @@ export type ServerMsg =
   | ({ t: 'pos'; id: string } & PeerPos)
   | { t: 'leave'; id: string }
   | { t: 'game'; id: string; data: unknown }
-  | { t: 'full' };
+  | { t: 'full' }
+  | { t: 'admin'; ok: boolean }
+  /** The hall config everyone sees (sent on joining and whenever an admin changes it). */
+  | { t: 'config'; cfg: HallConfig };
+
+/** Games an admin can close. */
+export const GAME_PLACES = ['bowling', 'airhockey', 'darts', 'pool', 'arcade', 'foosball'] as const;
+export type GamePlace = (typeof GAME_PLACES)[number];
+/** Decorations an admin can put up (built by the hall, see world3d/decor.ts). */
+export const DECOR_KINDS = ['cuadro', 'bandera-es', 'bandera-il', 'foto-sanchez', 'emoji-china', 'reloj', 'espejo', 'diana', 'planta', 'estanteria', 'sillon', 'lampara'] as const;
+export type DecorKind = (typeof DECOR_KINDS)[number];
+export interface DecorItem {
+  kind: DecorKind;
+  x: number;
+  z: number;
+  /** Height (wall items) and rotation about y. */
+  y: number;
+  r: number;
+  /** Picture variant for paintings. */
+  v: number;
+}
+export interface HallConfig {
+  wall: string;
+  floor: string;
+  light: string;
+  closed: GamePlace[];
+  decor: DecorItem[];
+}
+export const MAX_DECOR = 24;
+export const DEFAULT_CONFIG: HallConfig = { wall: '#ffffff', floor: '#d8ccc0', light: '#ffcf96', closed: [], decor: [] };
+
+const hex = (v: unknown, def: string) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : def);
+const r2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Validates a hall config from the network; anything malformed falls back to the defaults. */
+export function parseConfig(v: unknown): HallConfig {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  const closed = Array.isArray(o.closed) ? GAME_PLACES.filter((g) => (o.closed as unknown[]).includes(g)) : [];
+  const decor: DecorItem[] = [];
+  for (const d of Array.isArray(o.decor) ? o.decor.slice(0, MAX_DECOR) : []) {
+    const e = (d && typeof d === 'object' ? d : {}) as Record<string, unknown>;
+    const x = num(e.x, -16, 16);
+    const z = num(e.z, -14, 14);
+    if (!DECOR_KINDS.includes(e.kind as DecorKind) || x === null || z === null) continue;
+    decor.push({ kind: e.kind as DecorKind, x: r2(x), z: r2(z), y: r2(num(e.y, 0, 4) ?? 0), r: r2(num(e.r, -7, 7) ?? 0), v: Math.round(num(e.v, 0, 99) ?? 0) });
+  }
+  return { wall: hex(o.wall, DEFAULT_CONFIG.wall), floor: hex(o.floor, DEFAULT_CONFIG.floor), light: hex(o.light, DEFAULT_CONFIG.light), closed, decor };
+}
 
 /** Trims, strips control characters and caps length; never empty. */
 export function cleanName(raw: unknown): string {
@@ -78,6 +129,8 @@ export function parseClient(raw: string): ClientMsg | null {
     return { t: 'pos', x, y, dir: Math.round(dir), moving: m.moving === true, place: m.place as NetPlace };
   }
   if (m.t === 'game') return { t: 'game', data: m.data ?? null };
+  if (m.t === 'admin') return typeof m.key === 'string' && m.key.length <= 64 ? { t: 'admin', key: m.key } : null;
+  if (m.t === 'config') return { t: 'config', cfg: parseConfig(m.cfg) };
   return null;
 }
 
@@ -117,6 +170,10 @@ export function parseServer(raw: string): ServerMsg | null {
       return typeof m.id === 'string' ? { t: 'game', id: m.id, data: m.data ?? null } : null;
     case 'full':
       return { t: 'full' };
+    case 'admin':
+      return { t: 'admin', ok: m.ok === true };
+    case 'config':
+      return { t: 'config', cfg: parseConfig(m.cfg) };
   }
   return null;
 }

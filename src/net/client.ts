@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useWorldStore } from '../world/worldStore';
-import { cleanRoom, parseServer, type ClientMsg, type NetPlace, type Peer, type PeerPos } from './protocol';
+import { cleanRoom, DEFAULT_CONFIG, parseServer, type ClientMsg, type HallConfig, type NetPlace, type Peer, type PeerPos } from './protocol';
 
 export type NetStatus = 'off' | 'connecting' | 'online' | 'offline' | 'full';
 
@@ -17,6 +17,9 @@ export interface RemotePeer extends Peer {
   ty: number;
   anim: number;
 }
+
+/** Admin mode and the shared hall config (colours, closed games, decorations). */
+export const useAdminStore = create<{ admin: boolean; panel: boolean; config: HallConfig }>(() => ({ admin: false, panel: false, config: DEFAULT_CONFIG }));
 
 const SEND_EVERY = 0.1; // s, 10 updates per second
 
@@ -140,6 +143,13 @@ class NetClient {
       case 'game':
         for (const fn of this.gameListeners) fn(m.id, m.data);
         break;
+      case 'admin':
+        useAdminStore.setState({ admin: m.ok, panel: m.ok });
+        for (const fn of this.adminListeners) fn(m.ok);
+        break;
+      case 'config':
+        useAdminStore.setState({ config: m.cfg });
+        break;
       case 'full':
         useNetStore.setState({ status: 'full' });
         this.hello = null; // don't hammer a full room
@@ -172,6 +182,24 @@ class NetClient {
   onGame(fn: (from: string, data: unknown) => void) {
     this.gameListeners.add(fn);
     return () => this.gameListeners.delete(fn);
+  }
+
+  private readonly adminListeners = new Set<(ok: boolean) => void>();
+
+  /** Asks the server for admin mode; `done` gets the answer (false at once if offline). */
+  adminLogin(key: string, done: (ok: boolean) => void) {
+    if (this.ws?.readyState !== WebSocket.OPEN) return done(false);
+    const fn = (ok: boolean) => {
+      this.adminListeners.delete(fn);
+      done(ok);
+    };
+    this.adminListeners.add(fn);
+    this.send({ t: 'admin', key });
+  }
+
+  /** Admin only: publishes a new hall config to everyone (the server echoes it back). */
+  sendConfig(cfg: HallConfig) {
+    this.send({ t: 'config', cfg });
   }
 
   /** Sends a minigame payload to everyone else in the room. */
