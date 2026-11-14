@@ -367,8 +367,8 @@ body.touch-active .desktop-only { display: none; }
 body.touch-active .world-prompt { bottom: 190px; white-space: nowrap; }
 
 /* ---------- air hockey ---------- */
-#hockey-stage, #darts-stage, #pool-stage { position: absolute; inset: 0; touch-action: none; }
-#hockey-stage canvas, #darts-stage canvas, #pool-stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+#hockey-stage, #darts-stage, #pool-stage, #foos-stage { position: absolute; inset: 0; touch-action: none; }
+#hockey-stage canvas, #darts-stage canvas, #pool-stage canvas, #foos-stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .hockey-hud {
   position: absolute; top: 12px; left: 0; right: 0; margin: 0 auto; width: max-content; z-index: 10;
   display: flex; align-items: center; gap: 14px; padding: 6px 16px; border-radius: 12px;

@@ -22,6 +22,8 @@ import { poolRef } from '../games/pool/instance';
 import { PoolUI } from '../games/pool/ui/PoolUI';
 import { ArcadeUI } from '../games/arcade/ui/ArcadeUI';
 import { ChatUI } from './ChatUI';
+import { foosRef } from '../games/foosball/instance';
+import { FoosballUI } from '../games/foosball/ui/FoosballUI';
 
 export function App() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -29,6 +31,7 @@ export function App() {
   const hockeyStageRef = useRef<HTMLDivElement>(null);
   const dartsStageRef = useRef<HTMLDivElement>(null);
   const poolStageRef = useRef<HTMLDivElement>(null);
+  const foosStageRef = useRef<HTMLDivElement>(null);
   const screen = useGameStore((s) => s.screen);
   const place = useWorldStore((s) => s.place);
   const worldScreen = useWorldStore((s) => s.screen);
@@ -38,21 +41,23 @@ export function App() {
     const st = useGameStore.getState();
     (async () => {
       try {
-        const [{ Game }, { World }, { AirHockey }, { Darts }, { Pool }] = await Promise.all([
+        const [{ Game }, { World }, { AirHockey }, { Darts }, { Pool }, { Foosball }] = await Promise.all([
           import('../games/bowling/game/Game'),
           useWorldStore.getState().style === 'pixel' ? import('../world/World') : import('../world3d/World'),
           import('../games/airhockey/AirHockey'),
           import('../games/darts/Darts'),
           import('../games/pool/Pool'),
+          import('../games/foosball/Foosball'),
           initRapier(),
         ]);
-        if (cancelled || !stageRef.current || !worldStageRef.current || !hockeyStageRef.current || !dartsStageRef.current || !poolStageRef.current || gameRef.current) return;
+        if (cancelled || !stageRef.current || !worldStageRef.current || !hockeyStageRef.current || !dartsStageRef.current || !poolStageRef.current || !foosStageRef.current || gameRef.current) return;
         gameRef.current = new Game(stageRef.current);
         worldRef.current = new World(worldStageRef.current);
         hockeyRef.current = new AirHockey(hockeyStageRef.current);
         dartsRef.current = new Darts(dartsStageRef.current);
         poolRef.current = new Pool(poolStageRef.current);
-        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current, __hockey: hockeyRef.current, __darts: dartsRef.current, __pool: poolRef.current, __stores: { game: useGameStore, world: useWorldStore, hockey: useHockeyStore } }); // for browser testing
+        foosRef.current = new Foosball(foosStageRef.current);
+        if (import.meta.env.DEV) Object.assign(window, { __world: worldRef.current, __game: gameRef.current, __hockey: hockeyRef.current, __darts: dartsRef.current, __pool: poolRef.current, __foos: foosRef.current, __stores: { game: useGameStore, world: useWorldStore, hockey: useHockeyStore } }); // for browser testing
         st.setScreen('menu');
         useWorldStore.getState().setScreen('title');
       } catch (e) {
@@ -83,6 +88,7 @@ export function App() {
       <div id="hockey-stage" ref={hockeyStageRef} className={place === 'airhockey' ? '' : 'hidden'} />
       <div id="darts-stage" ref={dartsStageRef} className={place === 'darts' ? '' : 'hidden'} />
       <div id="pool-stage" ref={poolStageRef} className={place === 'pool' ? '' : 'hidden'} />
+      <div id="foos-stage" ref={foosStageRef} className={place === 'foosball' ? '' : 'hidden'} />
       {(screen === 'loading' || worldScreen === 'loading') && <LoadingScreen />}
       {place === 'world' && worldScreen !== 'loading' && <WorldUI />}
       {place === 'bowling' && (
@@ -99,6 +105,7 @@ export function App() {
       {place === 'darts' && <DartsUI />}
       {place === 'pool' && <PoolUI />}
       {place === 'arcade' && <ArcadeUI />}
+      {place === 'foosball' && <FoosballUI />}
       {worldScreen !== 'loading' && worldScreen !== 'title' && <ChatUI />}
       <Fade />
     </>

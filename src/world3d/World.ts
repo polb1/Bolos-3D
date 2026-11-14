@@ -12,6 +12,7 @@ import { OUTFITS, useWorldStore } from '../world/worldStore';
 import { useHockeyStore } from '../games/airhockey/store';
 import { useDartsStore } from '../games/darts/store';
 import { lastSaid } from '../net/chat';
+import { useFoosStore } from '../games/foosball/store';
 import { usePoolStore } from '../games/pool/store';
 import { net } from '../net/client';
 import { hockeyRef } from '../games/airhockey/instance';
@@ -186,6 +187,7 @@ export class World {
       if (a.place === 'bowling') useGameStore.getState().setScreen('menu');
       if (a.place === 'airhockey') useHockeyStore.getState().setScreen('menu');
       if (a.place === 'darts') useDartsStore.getState().set({ screen: 'menu' });
+      if (a.place === 'foosball') useFoosStore.getState().set({ screen: 'menu' });
       if (a.place === 'pool' && usePoolStore.getState().screen !== 'playing') usePoolStore.getState().set({ screen: 'menu' });
       w.setFade(false);
       this.busy = false;
@@ -332,7 +334,7 @@ export class World {
         this.ghosts.set(p.id, g);
       }
       if (g.outfit !== p.outfit) g.avatar.setOutfit(OUTFITS[(g.outfit = p.outfit)]?.outfit ?? OUTFITS[0].outfit);
-      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : p.place === 'darts' ? 'dardos' : p.place === 'pool' ? 'billar' : p.place === 'arcade' ? 'recreativas' : 'air hockey'}`;
+      const label = p.place === 'world' ? p.name : `${p.name} · ${p.place === 'bowling' ? 'bolos' : p.place === 'darts' ? 'dardos' : p.place === 'pool' ? 'billar' : p.place === 'arcade' ? 'recreativas' : p.place === 'foosball' ? 'futbolín' : 'air hockey'}`;
       if (label !== g.label) this.drawLabel(g.tag, (g.label = label), '#000000aa', '#eaf2ff');
       this.setBubble(g.bubble, g, lastSaid(p.id));
       // Facing and gait come from how far the eased position moved this frame.

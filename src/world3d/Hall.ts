@@ -215,6 +215,7 @@ export class Hall {
     rack.position.set(10, 0.4, -HZ + 0.1);
     this.group.add(rack);
     this.sign('BILLAR', 0.45, 10, 3.2, -HZ + 0.06, 0);
+    this.onWall(P.wallFlag(), 'n', 14.3, 2.7);
   }
 
   private airHockey() {

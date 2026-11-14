@@ -1,6 +1,6 @@
 # Virtual Arcade — contexto para Claude
 
-Salón de juegos en el navegador: un local 3D en tercera persona con bolera, air hockey, dardos, billar y recreativas jugables (futbolín aún «Próximamente»). Repo: https://github.com/polb1/Bolos-3D. Lee también `README.md`, `ARCHITECTURE.md` y `REVERSE_ENGINEERING.md`. Responde en español.
+Salón de juegos en el navegador: un local 3D en tercera persona con bolera, air hockey, dardos, billar, recreativas y futbolín jugables. Repo: https://github.com/polb1/Bolos-3D. Lee también `README.md`, `ARCHITECTURE.md` y `REVERSE_ENGINEERING.md`. Responde en español.
 
 ## Estilo visual (decisión del usuario, nov 2026)
 Local cálido y acogedor, nada futurista ni neones: suelo de roble, yeso con zócalo de madera, ladrillo tras la barra, vigas, lámparas colgantes de luz cálida, alfombras, sofás, cuadros y plantas. Rótulos de madera pintada (`woodSign`). La interfaz usa paneles color espresso, texto crema y acento ámbar (`--lime` y `--blue-*` en `styles.css` conservan el nombre antiguo: son el acento y los tonos suaves). Los minijuegos ocurren dentro del mismo salón (`world3d/lounge.ts`).
@@ -34,6 +34,9 @@ Vite + TypeScript + React 19 (solo la interfaz) + Zustand + Three.js imperativo 
 ## Recreativas (`games/arcade/`)
 Cinco máquinas en canvas 2D, sin online, récord en localStorage (`arcade.best`): `maze.ts` «Ratón glotón» (laberinto de persecución con diseño propio, no una copia de Pac-Man: ratón, migas, queso que asusta a los gatos), `bricks.ts` «Ladrillos», `snake.ts` «Serpiente», `planes.ts` «Escuadrilla» (biplano sobre el mar, dispara solo), `planet.ts` «Planeta en peligro» (cañón en un planeta contra rocas que se parten). Interfaz común `ArcadeGame` (`step`/`draw`) en `types.ts`; `ui/ArcadeUI.tsx` (estilos en `ui/arcade.css`) dibuja el salón con muebles de madera, marquesina iluminada, pantalla CRT, palanca y botones que reaccionan, «inserta ficha» antes de empezar; lleva el bucle y la entrada (flechas/WASD, Espacio, deslizar el dedo, arrastrar la pala).
 
+## Futbolín (`games/foosball/`)
+`physics.ts` (puro, con tests): mesa 2D vista desde arriba con 8 barras (1-2-3-5 por equipo), patada con alcance delante y justo detrás del muñeco, empujón si la bola se para, IA por niveles (`aiControl`, reacciona a la bola con retraso). `Foosball.ts`: escena 3D en el salón, cámara tras tu portería (rojos). El ratón o el dedo mueven a la vez todas tus barras; clic, toque o Espacio chuta. Partida a 5 goles contra la IA, sin online.
+
 ## Chat (`net/chat.ts`, `ui/ChatUI.tsx`)
 Chat de sala en todas las pantallas (Enter o 💬), viaja como mensaje de juego `chat`. La última frase sale 12 s en un bocadillo sobre la cabeza del jugador en el local 3D (no en el local pixel).
 
@@ -43,11 +46,11 @@ Chat de sala en todas las pantallas (Enter o 💬), viaja como mensaje de juego 
 - **Online:** sala por `?sala=`, servidor `npm run server`; el juego debe funcionar sin servidor. Render despliega a mano (Manual Deploy) y el servidor se redespliega con el cliente.
 
 ## Comandos
-`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (95 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
+`npm install` · `npm run dev` (http://localhost:5173) · `npm test` (97 tests) · `npm run server` (sala online, puerto 8787) · `npm run build`
 
 ## Pruebas en navegador
-En desarrollo `window.__world`, `__game`, `__hockey`, `__darts`, `__pool`, `__arcade` (al abrir una máquina) y `__stores` están expuestos. Todos tienen `frame(dt)` para avanzar a mano: el panel del navegador integrado suele estar oculto y entonces `requestAnimationFrame` no corre. Para entrar en un juego: `__world.enter()`, poner `__world.pos` sobre la actividad, `__world.frame(0.016)` y `__world.interact()`. En headless los eventos del ratón llegan espaciados y la velocidad de un gesto sale falsa.
+En desarrollo `window.__world`, `__game`, `__hockey`, `__darts`, `__pool`, `__arcade` (al abrir una máquina), `__foos` y `__stores` están expuestos. Todos tienen `frame(dt)` para avanzar a mano: el panel del navegador integrado suele estar oculto y entonces `requestAnimationFrame` no corre. Para entrar en un juego: `__world.enter()`, poner `__world.pos` sobre la actividad, `__world.frame(0.016)` y `__world.interact()`. En headless los eventos del ratón llegan espaciados y la velocidad de un gesto sale falsa.
 
 ## Pendiente / sin verificar
 - Probar con GPU, ratón y dedo reales: sensación de los gestos, rendimiento del local en móviles modestos, sonido.
-- Futbolín sigue sin juego. Recreativas sin online. Billar: sin efectos (retroceso, efecto lateral) y sin probar con ratón/dedo reales.
+- Futbolín y recreativas sin online; el futbolín no se ha probado con ratón/dedo reales. Billar: sin efectos (retroceso, efecto lateral) y sin probar con ratón/dedo reales.

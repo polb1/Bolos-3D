@@ -21,8 +21,8 @@ export const ACTIVITIES: Activity[] = [
   { id: 'darts', name: 'Dardos', x: 5.5, y: 16.5, radius: 2.4, place: 'darts', color: '#ffb84f' },
   { id: 'airhockey-1', name: 'Air Hockey', x: 35, y: 15.8, radius: 1.3, place: 'airhockey', color: '#ff4f6e' },
   { id: 'airhockey-2', name: 'Air Hockey', x: 35, y: 20, radius: 1.3, place: 'airhockey', color: '#ff4f6e' },
-  { id: 'foosball-1', name: 'Futbolín', x: 40, y: 15.8, radius: 1.3, place: null, color: '#7dffb0' },
-  { id: 'foosball-2', name: 'Futbolín', x: 40, y: 20, radius: 1.3, place: null, color: '#7dffb0' },
+  { id: 'foosball-1', name: 'Futbolín', x: 40, y: 15.8, radius: 1.3, place: 'foosball', color: '#7dffb0' },
+  { id: 'foosball-2', name: 'Futbolín', x: 40, y: 20, radius: 1.3, place: 'foosball', color: '#7dffb0' },
   { id: 'arcade', name: 'Recreativas', x: 37.5, y: 24.6, radius: 2.4, place: 'arcade', color: '#b06bff' },
 ];
 

@@ -317,3 +317,23 @@ export function blobShadow() {
   g.fillRect(0, 0, 128, 128);
   return new THREE.CanvasTexture(c);
 }
+
+/** Flag of Israel: two blue stripes and the Star of David on white (proportions 8:11). */
+export function israelFlag() {
+  const [c, g] = canvas(440, 320);
+  const blue = '#0038b8';
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, 440, 320);
+  g.fillStyle = blue;
+  g.fillRect(0, 30, 440, 50);
+  g.fillRect(0, 240, 440, 50);
+  g.strokeStyle = blue;
+  g.lineWidth = 11;
+  for (const rot of [-Math.PI / 2, Math.PI / 2]) {
+    g.beginPath();
+    for (let i = 0; i < 3; i++) g.lineTo(220 + Math.cos(rot + (i * 2 * Math.PI) / 3) * 62, 160 + Math.sin(rot + (i * 2 * Math.PI) / 3) * 62);
+    g.closePath();
+    g.stroke();
+  }
+  return tex(c);
+}
